@@ -42,6 +42,7 @@ func NewApplication(name string) *Application {
 		Name:                 name,
 		runnables:            make(map[string]Runnable, 0),
 		runnableDescriptions: make(map[string]string, 0),
+		Out:                  os.Stdout,
 	}
 }
 
