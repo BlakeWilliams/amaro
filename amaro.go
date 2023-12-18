@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -23,7 +25,8 @@ type (
 		// Out is the writer to which output is written. If nil, os.Stdout is used.
 		Out io.Writer
 
-		runnables map[string]Runnable
+		runnables            map[string]Runnable
+		runnableDescriptions map[string]string
 	}
 
 	// Runnable is an interface that can be implemented by any type that
@@ -36,8 +39,9 @@ type (
 // NewApplication creates a new application instance.
 func NewApplication(name string) *Application {
 	return &Application{
-		Name:      name,
-		runnables: make(map[string]Runnable, 0),
+		Name:                 name,
+		runnables:            make(map[string]Runnable, 0),
+		runnableDescriptions: make(map[string]string, 0),
 	}
 }
 
@@ -63,20 +67,29 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 		done()
 	}()
 
-	if len(cmdArgs) < 2 {
+	if len(cmdArgs) < 1 {
 		fmt.Println("todo print help")
 		return
 	}
 
 	cmdName := cmdArgs[0]
+	if cmdName == "help" {
+		if len(cmdArgs) == 1 {
+			a.Help()
+		} else {
+			a.HelpCommand(cmdArgs[1])
+		}
+		return
+	}
+
 	cmd, ok := a.runnables[cmdName]
 	if !ok {
-		fmt.Println("todo print help and say command does not exist")
+		fmt.Fprintf(a.Out, "unknown command: %s\n", cmdName)
 		return
 	}
 
 	if len(cmdArgs) == 1 {
-		cmd.RunCommand(context.TODO(), a.Out)
+		cmd.RunCommand(ctx, a.Out)
 		return
 	}
 
@@ -157,7 +170,96 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 	}
 }
 
+var cmdNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z:]+$`)
+
 // RegisterCommand adds a runnable to the application that can be run via the CLI.
-func (a *Application) RegisterCommand(name string, runnable Runnable) {
+func (a *Application) RegisterCommand(runnable Runnable, name string, description string) {
+	if name == "help" {
+		panic("cannot register command named help")
+	}
+
+	if !cmdNameRegex.MatchString(name) {
+		panic(fmt.Sprintf("invalid command name %s. Command must be alphanumeric and may only contain : special characters", name))
+	}
+
+	if len(name) > 20 {
+		panic(fmt.Sprintf("command name %s is too long. Command names must be less than 20 characters", name))
+	}
+
 	a.runnables[name] = runnable
+	a.runnableDescriptions[name] = description
+}
+
+func (a *Application) Help() {
+	_, _ = a.Out.Write([]byte("usage\n"))
+
+	longestRunnable := 2
+
+	names := make([]string, 0, len(a.runnables))
+	for name := range a.runnables {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		if len(name) > longestRunnable {
+			longestRunnable = len(name)
+		}
+	}
+
+	for _, name := range names {
+		fmt.Fprintf(a.Out, "  %s %s %s\n", name, strings.Repeat(" ", longestRunnable-len(name)), a.runnableDescriptions[name])
+	}
+}
+
+func (a *Application) HelpCommand(cmdName string) {
+	_, _ = a.Out.Write([]byte(fmt.Sprintf("usage for %s\n", cmdName)))
+
+	longestArg := 2
+
+	cmd, ok := a.runnables[cmdName]
+	if !ok {
+		fmt.Fprintf(a.Out, "unknown command: %s\n", cmdName)
+		a.Help()
+		return
+	}
+
+	t := reflect.TypeOf(cmd)
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	for i := 0; i < t.NumField(); i++ {
+		argType := t.Field(i)
+		flagName := argType.Tag.Get("flag")
+
+		if flagName == "" {
+			continue
+		}
+
+		if len(flagName) > longestArg {
+			longestArg = len(flagName)
+		}
+	}
+
+	for i := 0; i < t.NumField(); i++ {
+		argType := t.Field(i)
+		flagName := argType.Tag.Get("flag")
+		description := argType.Tag.Get("description")
+		// required := argType.Tag.Get("required")
+
+		if flagName == "" {
+			continue
+		}
+
+		if description == "" {
+			description = "no description provided"
+		}
+
+		if required := argType.Tag.Get("required"); required == "true" {
+			description = fmt.Sprintf("%s (required)", description)
+		}
+		fmt.Fprintf(a.Out, "  -%s %s %s\n", flagName, strings.Repeat(" ", longestArg-len(flagName)), description)
+	}
+
 }
