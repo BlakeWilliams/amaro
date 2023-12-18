@@ -137,6 +137,12 @@ func (p *parser) parseValue() string {
 		}
 
 		if p.input[p.i] == ' ' {
+			if p.i+2 < len(p.input) && p.input[p.i+1] == '-' && p.input[p.i+2] == '-' {
+				break
+			}
+		}
+
+		if p.i+1 < len(p.input) && p.input[p.i] == '-' && p.input[p.i+1] == '-' {
 			break
 		}
 

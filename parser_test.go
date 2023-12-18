@@ -33,6 +33,19 @@ var tests = []struct {
 		},
 	},
 	{
+		input: "--name John Doe --age 30",
+		want: map[string]arg{
+			"name": {
+				name:  "name",
+				value: "John Doe",
+			},
+			"age": {
+				name:  "age",
+				value: "30",
+			},
+		},
+	},
+	{
 		input: "--important",
 		want: map[string]arg{
 			"important": {
