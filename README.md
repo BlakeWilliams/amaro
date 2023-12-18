@@ -1,6 +1,12 @@
 # Amaro
 
-Amaro is an experimental CLI framework for Go applications. It's intended to be extensible, so first and third party plugins can be added to extend the functionality of the CLI.
+Amaro is an experimental CLI framework for Go applications. It's intended to be
+extensible so first and third party plugins can be added to extend the
+functionality of the CLI. For example, a database library may register rollback
+and migrate commands to the CLI and a web framework may register a server
+command.
+
+Heavy inspiration was taken from Rails/Rake.
 
 ## Installation
 

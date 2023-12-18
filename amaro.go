@@ -127,12 +127,11 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 			continue
 		}
 
-		// Should this panic? Yes, only if the flag is required. TODO:
 		parsedArg, ok := parsedArgs[flagName]
 		if !ok {
-			fmt.Printf("could not parse flag %s\n", flagName)
-			os.Exit(1)
-			continue
+			fmt.Fprintf(a.Out, "could not parse flag %s\n", flagName)
+			a.HelpCommand(cmdName)
+			return
 		}
 
 		switch argType.Type.Kind() {
@@ -164,7 +163,7 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 		}
 	}
 
-	err = cmd.RunCommand(context.TODO(), a.Out)
+	err = cmd.RunCommand(ctx, a.Out)
 	if err != nil {
 		panic(err)
 	}

@@ -56,6 +56,20 @@ func TestCLI_MissingRequiredArg(t *testing.T) {
 	require.Contains(t, got, "missing required flag: age")
 }
 
+func TestCLI_IntArg(t *testing.T) {
+	app := NewApplication("test")
+	var b []byte
+	app.Out = bytes.NewBuffer(b)
+
+	app.RegisterCommand(&AgeGreeter{}, "greet", "greets users")
+	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder", "--age=42"})
+
+	got := app.Out.(*bytes.Buffer).String()
+	expected := "Hello Fox Mulder, you are 42 years old!\n"
+
+	require.Equal(t, expected, got)
+}
+
 func TestCLI__Help(t *testing.T) {
 	app := NewApplication("test")
 	var b []byte
