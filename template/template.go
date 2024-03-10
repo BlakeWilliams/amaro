@@ -28,8 +28,6 @@ func (g *Generator) RunCommand(ctx context.Context, w io.Writer) error {
 		cwd, _ := os.Getwd()
 		g.path = cwd
 	}
-	// TODO fetch the package name to import properly
-
 	modFile := g.path + "/go.mod"
 	f, err := os.Open(modFile)
 	if err != nil {
@@ -43,25 +41,16 @@ func (g *Generator) RunCommand(ctx context.Context, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("error parsing go.mod file: %w", err)
 	}
-	fmt.Println("YO")
-	fmt.Println(mf.Module.Mod.Path)
 
-	err = Generate("todofix", g.path, w)
+	err = Generate(mf.Module.Mod.Path, g.path, w)
 	if err != nil {
-		fmt.Println("WTF")
-		fmt.Println(err)
 		return fmt.Errorf("error generating files: %w", err)
 	}
 
-	fmt.Println("nah")
 	return nil
 }
 
 func Generate(packageName string, packageRoot string, out io.Writer) error {
-	if !packageNameRegex.MatchString(packageName) {
-		return fmt.Errorf("package name must be lowercase letters only: %s", packageName)
-	}
-
 	templateData := map[string]any{
 		"packageName": packageName,
 	}
