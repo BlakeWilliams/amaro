@@ -15,6 +15,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/blakewilliams/amaro/template"
 )
 
 type (
@@ -38,12 +40,17 @@ type (
 
 // NewApplication creates a new application instance.
 func NewApplication(name string) *Application {
-	return &Application{
+	app := &Application{
 		Name:                 name,
 		runnables:            make(map[string]Runnable, 0),
 		runnableDescriptions: make(map[string]string, 0),
 		Out:                  os.Stdout,
 	}
+
+	generator := &template.Generator{}
+	app.RegisterCommand(generator, "generate", "Generates the base files for a new amaro project")
+
+	return app
 }
 
 // Execute runs the registered runnable that matches the command line arguments.
@@ -65,11 +72,12 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 
 	go func() {
 		<-c
+		fmt.Println("CANCEL")
 		done()
 	}()
 
 	if len(cmdArgs) < 1 {
-		fmt.Println("todo print help")
+		a.Help()
 		return
 	}
 
@@ -80,6 +88,7 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 		} else {
 			a.HelpCommand(cmdArgs[1])
 		}
+
 		return
 	}
 
@@ -213,16 +222,15 @@ func (a *Application) Help() {
 }
 
 func (a *Application) HelpCommand(cmdName string) {
-	_, _ = a.Out.Write([]byte(fmt.Sprintf("usage for %s\n", cmdName)))
-
-	longestArg := 2
-
 	cmd, ok := a.runnables[cmdName]
 	if !ok {
 		fmt.Fprintf(a.Out, "unknown command: %s\n", cmdName)
 		a.Help()
 		return
 	}
+
+	_, _ = a.Out.Write([]byte(fmt.Sprintf("usage for %s\n", cmdName)))
+	longestArg := 2
 
 	t := reflect.TypeOf(cmd)
 	if t.Kind() == reflect.Ptr {
