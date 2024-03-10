@@ -1,0 +1,21 @@
+package web
+
+
+import (
+    "github.com/blakewilliams/amaro/fernet"
+    "github.com/blakewilliams/bat"
+)
+
+type requestContext struct {
+    renderer *bat.Engine
+    defaultRenderData map[string]any
+
+	fernet.RequestContext
+}
+
+func newRequestContext(s *Server) *requestContext {
+    return &requestContext{
+        renderer: renderer,
+        defaultRenderData: make(map[string]any),
+    }
+}

@@ -1,0 +1,25 @@
+package web
+
+import (
+    "github.com/blakewilliams/amaro/fernet"
+    "github.com/blakewilliams/bat"
+)
+
+// Server represents the web server and routes of the application.
+type Server struct {
+	router     *fernet.Router[*requestContext]
+	app        *app.Application
+	renderer   *bat.Engine
+}
+
+func NewServer(app *app.Application) *Server {
+    s := &Server{
+        app: app,
+        router: fernet.NewRouter(),
+        renderer: bat.NewEngine(),
+    }
+
+    s.router.Get("/", HomeHandler)
+
+    <- app.Done()
+}
