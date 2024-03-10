@@ -1,8 +1,11 @@
 package web
 
 import (
+    "embed"
+    "html"
     "github.com/blakewilliams/amaro/fernet"
     "github.com/blakewilliams/bat"
+    "{{.PackageName}}/internal/app"
 )
 
 // Server represents the web server and routes of the application.
@@ -13,13 +16,30 @@ type Server struct {
 }
 
 func NewServer(app *app.Application) *Server {
-    s := &Server{
-        app: app,
-        router: fernet.NewRouter(),
-        renderer: bat.NewEngine(),
+    s := &Server{app: app}
+    s.router = initRouter(s)
+    s.renderer = initTemplateEngine(s)
+
+    return s
+}
+
+func initRouter(s *Server) *fernet.Router[*requestContext] {
+    r := fernet.New[*requestContext](newRequestContext(s))
+
+    r.Get("/", homeHandler)
+
+    return r
+}
+
+//go:embed all:templates
+var templateFS embed.FS
+
+func initTemplateEngine(s *Server) *bat.Engine {
+    e := bat.NewEngine(html.EscapeString)
+    err := e.AutoRegister(templateFS, "templates", ".html")
+    if err != nil {
+        panic(err)
     }
 
-    s.router.Get("/", HomeHandler)
-
-    <- app.Done()
+    return e
 }

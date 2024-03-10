@@ -12,6 +12,7 @@ import (
 func TestGenerate(t *testing.T) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "template-test")
 	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
 	initFile := `package main
 	import (
@@ -71,11 +72,8 @@ func TestGenerate(t *testing.T) {
 	err = tidyCmd.Run()
 	require.NoError(t, err)
 
-	// b := new(bytes.Buffer)
-	// err = Generate("radical", tempDir, b)
-	// require.NoError(t, err)
-
 	require.FileExists(t, tempDir+"/internal/app/app.go")
+
 	require.FileExists(t, tempDir+"/internal/web/web.go")
 
 	testCmd := exec.Command("go", "test", "./...")

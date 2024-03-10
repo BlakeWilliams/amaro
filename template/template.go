@@ -52,7 +52,7 @@ func (g *Generator) RunCommand(ctx context.Context, w io.Writer) error {
 
 func Generate(packageName string, packageRoot string, out io.Writer) error {
 	templateData := map[string]any{
-		"packageName": packageName,
+		"PackageName": packageName,
 	}
 
 	err := fs.WalkDir(f, ".", func(path string, d fs.DirEntry, err error) error {
