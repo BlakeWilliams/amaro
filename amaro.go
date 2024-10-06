@@ -28,27 +28,55 @@ type (
 		Out io.Writer
 
 		runnables            map[string]Runnable
+		runnableOrder        []string
 		runnableDescriptions map[string]string
+
+		skipGenerator bool
 	}
 
 	// Runnable is an interface that can be implemented by any type that
-	// wants to be run by the application.
+	// wants to be run by the asdpplication.
 	Runnable interface {
 		RunCommand(context.Context, io.Writer) error
+		CommandName() string
+		CommandDescription() string
 	}
 )
 
+type ApplicationOption func(*Application)
+
+func WithoutGeneratorCommand() func(a *Application) {
+	return func(a *Application) {
+		a.skipGenerator = true
+	}
+}
+
+func WithCommands(commands ...Runnable) func(a *Application) {
+	return func(a *Application) {
+		for _, cmd := range commands {
+			a.RegisterCommand(cmd)
+		}
+	}
+}
+
 // NewApplication creates a new application instance.
-func NewApplication(name string) *Application {
+func NewApplication(name string, opts ...ApplicationOption) *Application {
 	app := &Application{
 		Name:                 name,
 		runnables:            make(map[string]Runnable, 0),
+		runnableOrder:        make([]string, 0),
 		runnableDescriptions: make(map[string]string, 0),
 		Out:                  os.Stdout,
 	}
 
-	generator := &template.Generator{}
-	app.RegisterCommand(generator, "generate", "Generates the base files for a new amaro project")
+	for _, opt := range opts {
+		opt(app)
+	}
+
+	if !app.skipGenerator {
+		generator := &template.Generator{}
+		app.RegisterCommand(generator)
+	}
 
 	return app
 }
@@ -182,7 +210,8 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 var cmdNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z:]+$`)
 
 // RegisterCommand adds a runnable to the application that can be run via the CLI.
-func (a *Application) RegisterCommand(runnable Runnable, name string, description string) {
+func (a *Application) RegisterCommand(runnable Runnable) {
+	name := runnable.CommandName()
 	if name == "help" {
 		panic("cannot register command named help")
 	}
@@ -196,7 +225,8 @@ func (a *Application) RegisterCommand(runnable Runnable, name string, descriptio
 	}
 
 	a.runnables[name] = runnable
-	a.runnableDescriptions[name] = description
+	a.runnableOrder = append(a.runnableOrder, name)
+	a.runnableDescriptions[name] = runnable.CommandDescription()
 }
 
 func (a *Application) Help() {
@@ -205,7 +235,7 @@ func (a *Application) Help() {
 	longestRunnable := 2
 
 	names := make([]string, 0, len(a.runnables))
-	for name := range a.runnables {
+	for _, name := range a.runnableOrder {
 		names = append(names, name)
 	}
 	sort.Strings(names)

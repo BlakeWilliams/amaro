@@ -19,12 +19,20 @@ func (g *Greeter) RunCommand(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
+func (g *Greeter) CommandName() string {
+	return "greet"
+}
+
+func (g *Greeter) CommandDescription() string {
+	return "greets users"
+}
+
 func TestCLICall(t *testing.T) {
 	app := NewApplication("test")
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
-	app.RegisterCommand(&Greeter{}, "greet", "greets users")
+	app.RegisterCommand(&Greeter{})
 	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder"})
 
 	expected := "Hello Fox Mulder!\n"
@@ -43,12 +51,20 @@ func (g *AgeGreeter) RunCommand(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
+func (g *AgeGreeter) CommandName() string {
+	return "greet:age"
+}
+
+func (g *AgeGreeter) CommandDescription() string {
+	return "greets users with their age"
+}
+
 func TestCLI_MissingRequiredArg(t *testing.T) {
 	app := NewApplication("test")
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
-	app.RegisterCommand(&AgeGreeter{}, "greet", "greets users")
+	app.RegisterCommand(&AgeGreeter{})
 	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder"})
 
 	got := app.Out.(*bytes.Buffer).String()
@@ -61,7 +77,7 @@ func TestCLI_IntArg(t *testing.T) {
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
-	app.RegisterCommand(&AgeGreeter{}, "greet", "greets users")
+	app.RegisterCommand(&AgeGreeter{})
 	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder", "--age=42"})
 
 	got := app.Out.(*bytes.Buffer).String()
@@ -75,10 +91,10 @@ func TestCLI__Help(t *testing.T) {
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
-	app.RegisterCommand(&AgeGreeter{}, "ageGreet", "greets users with age")
+	app.RegisterCommand(&AgeGreeter{})
 	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder"})
 
-	app.RegisterCommand(&AgeGreeter{}, "greet", "greets users")
+	app.RegisterCommand(&AgeGreeter{})
 	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder"})
 
 	got := app.Out.(*bytes.Buffer).String()
@@ -106,11 +122,11 @@ func TestRegisterCommand(t *testing.T) {
 
 			if tt.valid {
 				require.NotPanics(t, func() {
-					app.RegisterCommand(tt.runnable, tt.name, "desc")
+					app.RegisterCommand(tt.runnable)
 				})
 			} else {
 				require.Panics(t, func() {
-					app.RegisterCommand(tt.runnable, tt.name, "desc")
+					app.RegisterCommand(tt.runnable)
 				})
 			}
 		})
@@ -118,13 +134,12 @@ func TestRegisterCommand(t *testing.T) {
 }
 
 func TestHelp(t *testing.T) {
-
-	app := NewApplication("test")
+	app := NewApplication("test", WithoutGeneratorCommand())
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
-	app.RegisterCommand(&Greeter{}, "greet", "greets users")
-	app.RegisterCommand(&AgeGreeter{}, "greet:age", "greets users with their age")
+	app.RegisterCommand(&Greeter{})
+	app.RegisterCommand(&AgeGreeter{})
 	app.ExecuteWithArgs(context.Background(), []string{"help"})
 
 	expected := "usage\n  greet      greets users\n  greet:age  greets users with their age\n"
@@ -138,8 +153,8 @@ func TestHelpCommand(t *testing.T) {
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
-	app.RegisterCommand(&Greeter{}, "greet", "greets users")
-	app.RegisterCommand(&AgeGreeter{}, "greet:age", "greets users with their age")
+	app.RegisterCommand(&Greeter{})
+	app.RegisterCommand(&AgeGreeter{})
 	app.ExecuteWithArgs(context.Background(), []string{"help", "greet:age"})
 
 	expected := `usage for greet:age

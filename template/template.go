@@ -50,6 +50,14 @@ func (g *Generator) RunCommand(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
+func (g *Generator) CommandName() string {
+	return "generate"
+}
+
+func (g *Generator) CommandDescription() string {
+	return "Generates the base files for a new amaro project"
+}
+
 func Generate(packageName string, packageRoot string, out io.Writer) error {
 	templateData := map[string]any{
 		"PackageName": packageName,
