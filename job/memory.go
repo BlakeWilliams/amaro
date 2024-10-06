@@ -1,4 +1,4 @@
-package cynar
+package job
 
 import (
 	"container/list"

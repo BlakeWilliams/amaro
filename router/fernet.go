@@ -1,11 +1,11 @@
-package fernet
+package router
 
 import (
 	"context"
 	"net/http"
 	"strings"
 
-	"github.com/blakewilliams/amaro/fernet/internal/radical"
+	"github.com/blakewilliams/amaro/router/internal/radical"
 )
 
 type (
