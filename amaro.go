@@ -19,6 +19,15 @@ import (
 	"github.com/blakewilliams/amaro/template"
 )
 
+// TODO
+// - Skip running the generator if the app directory already exists
+// - Add a layout to the site
+// - Add tests via apptest
+// - Run gofmt on the generated files
+// - Add post generate instructions to the output indicating what to do next
+// 	 - Register the app in the main cmd
+//   - Add DevServer support – optional flag?
+
 type (
 	Application struct {
 		// The name of the application
