@@ -1,4 +1,4 @@
-package fernet
+package httprouter
 
 import (
 	"context"
@@ -14,7 +14,7 @@ type (
 		FromRequest(context.Context, T) bool
 	}
 
-	// Controller is similar to fernet.Router, but accepts a type that implements
+	// Controller is similar to router.Router, but accepts a type that implements
 	// the FromRequest interface that will be initialized each request and passed
 	// to the handler as the third argument.
 	Controller[T RequestContext, RequestData FromRequest[T]] struct {

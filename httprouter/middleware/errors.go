@@ -4,17 +4,17 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/blakewilliams/fernet"
+	"github.com/blakewilliams/amaro/httprouter"
 )
 
-// ErrorHandler will catch panics in fernet applications and call the provided
+// ErrorHandler will catch panics in applications and call the provided
 // handler so that an error response can be rendered. It automatically calls
 // `ResponseWriter.Clear` so partial responses aren't written to the client.
-func ErrorHandler[T fernet.RequestContext](
+func ErrorHandler[T httprouter.RequestContext](
 	log *slog.Logger,
 	handler func(ctx context.Context, rctx T, recovered any),
-) func(context.Context, T, fernet.Handler[T]) {
-	return func(ctx context.Context, rctx T, next fernet.Handler[T]) {
+) func(context.Context, T, httprouter.Handler[T]) {
+	return func(ctx context.Context, rctx T, next httprouter.Handler[T]) {
 		defer func() {
 			if rec := recover(); rec != nil {
 				if err, ok := rec.(error); ok {

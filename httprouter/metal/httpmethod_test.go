@@ -8,14 +8,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blakewilliams/fernet"
+	"github.com/blakewilliams/amaro/httprouter"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRewrite(t *testing.T) {
-	router := fernet.New(func(r fernet.RequestContext) fernet.RequestContext { return r })
+	router := httprouter.New(func(r httprouter.RequestContext) httprouter.RequestContext { return r })
 	router.UseMetal(MethodRewrite)
-	router.Delete("/", func(ctx context.Context, rc fernet.RequestContext) {
+	router.Delete("/", func(ctx context.Context, rc httprouter.RequestContext) {
 		rc.Response().WriteHeader(http.StatusOK)
 	})
 

@@ -1,11 +1,11 @@
-package router
+package httprouter
 
 import (
 	"context"
 	"net/http"
 	"strings"
 
-	"github.com/blakewilliams/amaro/router/internal/radical"
+	"github.com/blakewilliams/amaro/httprouter/internal/radical"
 )
 
 type (
@@ -134,9 +134,9 @@ func (r *Router[T]) Use(fn func(context.Context, T, Handler[T])) {
 }
 
 // UseMetal registers a "metal" middleware (net/http based) that will be run
-// before the fernet middleware stack and route handler. This is useful for
-// when the underlying http.ResponseWriter or *http.Request need to be
-// modified before fernet uses them.
+// before the middleware stack and route handler. This is useful for when the
+// underlying http.ResponseWriter or *http.Request need to be modified before
+// uses them.
 func (r *Router[T]) UseMetal(fn func(w http.ResponseWriter, r *http.Request, next http.Handler)) {
 	if r.anyRoutesDefined {
 		panic("UseMetal can only be called before routes are defined")
@@ -154,7 +154,7 @@ func (r *Router[T]) Group(prefix string) *Group[T] {
 // ServeHTTP implements the http.Handler interface.
 func (r *Router[T]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	httpHandler := func(rw http.ResponseWriter, req *http.Request) {
-		// Run fernet middleware and call route handler
+		// Run middleware and call route handler
 		method := req.Method
 		normalizedPath := normalizeRoutePath(req.URL.Path)
 		lookup := []string{method}
@@ -174,7 +174,7 @@ func (r *Router[T]) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			if !ok && !value.isWildcard() {
 				// This should never actually get hit in real code but would
 				// indicate a bug in the framework.
-				panic("route did not match request. this is a bug in fernet. please open an issue reporting this error and how to reproduce it.")
+				panic("route did not match request. this is a bug in router. please open an issue reporting this error and how to reproduce it.")
 			}
 		} else {
 			params = map[string]string{}

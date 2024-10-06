@@ -9,18 +9,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blakewilliams/fernet"
+	"github.com/blakewilliams/amaro/httprouter"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLogger(t *testing.T) {
 	var b bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&b, nil))
-	router := fernet.New(func(r fernet.RequestContext) fernet.RequestContext {
+	router := httprouter.New(func(r httprouter.RequestContext) httprouter.RequestContext {
 		return r
 	})
-	router.Use(Logger[fernet.RequestContext](logger))
-	router.Get("/:name", func(ctx context.Context, r fernet.RequestContext) {
+	router.Use(Logger[httprouter.RequestContext](logger))
+	router.Get("/:name", func(ctx context.Context, r httprouter.RequestContext) {
 		r.Response().WriteHeader(http.StatusAccepted)
 	})
 

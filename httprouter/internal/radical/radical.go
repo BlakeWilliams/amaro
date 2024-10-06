@@ -1,5 +1,5 @@
 // Package radical implements a basic radix trie like structure for use in the
-// fernet router.
+// router.
 package radical
 
 import (

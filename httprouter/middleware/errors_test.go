@@ -8,27 +8,27 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/blakewilliams/fernet"
+	"github.com/blakewilliams/amaro/httprouter"
 	"github.com/stretchr/testify/require"
 )
 
 func TestErrors(t *testing.T) {
-	router := fernet.New(func(r fernet.RequestContext) fernet.RequestContext {
+	router := httprouter.New(func(r httprouter.RequestContext) httprouter.RequestContext {
 		return r
 	})
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	router.Use(ErrorHandler(logger, func(ctx context.Context, r fernet.RequestContext, err any) {
+	router.Use(ErrorHandler(logger, func(ctx context.Context, r httprouter.RequestContext, err any) {
 		r.Response().WriteHeader(http.StatusInternalServerError)
 		_, _ = r.Response().Write([]byte("something went wrong"))
 	}))
 
-	router.Get("/ok", func(ctx context.Context, r fernet.RequestContext) {
+	router.Get("/ok", func(ctx context.Context, r httprouter.RequestContext) {
 		_, _ = r.Response().Write([]byte("all good!"))
 	})
 
-	router.Get("/not-ok", func(ctx context.Context, r fernet.RequestContext) {
+	router.Get("/not-ok", func(ctx context.Context, r httprouter.RequestContext) {
 		panic("omg")
 	})
 

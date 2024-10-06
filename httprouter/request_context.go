@@ -1,4 +1,4 @@
-package fernet
+package httprouter
 
 import (
 	"net/http"
@@ -10,7 +10,7 @@ import (
 type RequestContext interface {
 	// Request returns the original *http.Request
 	Request() *http.Request
-	// Writer returns a fernet.Response
+	// Writer returns a router.Response
 	Response() Response
 	// Params returns the parameters extracted from the URL path based on the
 	// matched route.

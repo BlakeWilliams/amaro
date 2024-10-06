@@ -221,6 +221,10 @@ var cmdNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z:]+$`)
 // RegisterCommand adds a runnable to the application that can be run via the CLI.
 func (a *Application) RegisterCommand(runnable Runnable) {
 	name := runnable.CommandName()
+	a.RegisterCommandWithName(runnable, name)
+}
+
+func (a *Application) RegisterCommandWithName(runnable Runnable, name string) {
 	if name == "help" {
 		panic("cannot register command named help")
 	}

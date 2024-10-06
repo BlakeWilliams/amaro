@@ -3,7 +3,7 @@ package radical_test
 import (
 	"testing"
 
-	"github.com/blakewilliams/amaro/router/internal/radical"
+	"github.com/blakewilliams/amaro/httprouter/internal/radical"
 	"github.com/stretchr/testify/require"
 )
 

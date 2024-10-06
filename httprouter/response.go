@@ -1,4 +1,4 @@
-package fernet
+package httprouter
 
 import (
 	"errors"

@@ -2,24 +2,24 @@ package web
 
 
 import (
-    "github.com/blakewilliams/amaro/router"
+    "github.com/blakewilliams/amaro/httprouter"
     "github.com/blakewilliams/bat"
 )
 
 // requestContext holds the data needed for the application to render a response
-// to an http request. It embeds the fernet.RequestContext type, which holds
+// to an http request. It embeds the router.RequestContext type, which holds
 // the http.Request and http.ResponseWriter.
 type requestContext struct {
     renderer *bat.Engine
     defaultRenderData map[string]any
 
-	fernet.RequestContext
+	router.RequestContext
 }
 
-// newRequestContext returns a new RequestContext factory that fernet calls for
+// newRequestContext returns a new RequestContext factory that router calls for
 // each route and passes the resulting RequestContext to the handler function.
-func newRequestContext(s *Server) func(r fernet.RequestContext) *requestContext  {
-    return func(r fernet.RequestContext) *requestContext  {
+func newRequestContext(s *Server) func(r router.RequestContext) *requestContext  {
+    return func(r router.RequestContext) *requestContext  {
         return &requestContext{
             renderer: s.renderer,
             defaultRenderData: make(map[string]any),

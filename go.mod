@@ -3,7 +3,6 @@ module github.com/blakewilliams/amaro
 go 1.21.4
 
 require (
-	github.com/blakewilliams/fernet v0.0.0-20231225185908-409062eaea59
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/mod v0.16.0

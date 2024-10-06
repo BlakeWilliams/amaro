@@ -3,14 +3,14 @@ package web
 import (
     "embed"
     "html"
-    "github.com/blakewilliams/amaro/fernet"
+    "github.com/blakewilliams/amaro/httprouter"
     "github.com/blakewilliams/bat"
     "{{.PackageName}}/internal/app"
 )
 
 // Server represents the web server and routes of the application.
 type Server struct {
-	router     *fernet.Router[*requestContext]
+	router     *router.Router[*requestContext]
 	app        *app.Application
 	renderer   *bat.Engine
 }
@@ -23,8 +23,8 @@ func NewServer(app *app.Application) *Server {
     return s
 }
 
-func initRouter(s *Server) *fernet.Router[*requestContext] {
-    r := fernet.New[*requestContext](newRequestContext(s))
+func initRouter(s *Server) *router.Router[*requestContext] {
+    r := router.New[*requestContext](newRequestContext(s))
 
     r.Get("/", homeHandler)
 

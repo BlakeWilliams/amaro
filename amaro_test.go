@@ -65,7 +65,7 @@ func TestCLI_MissingRequiredArg(t *testing.T) {
 	app.Out = bytes.NewBuffer(b)
 
 	app.RegisterCommand(&AgeGreeter{})
-	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder"})
+	app.ExecuteWithArgs(context.Background(), []string{"greet:age", "--name", "Fox Mulder"})
 
 	got := app.Out.(*bytes.Buffer).String()
 
@@ -78,7 +78,7 @@ func TestCLI_IntArg(t *testing.T) {
 	app.Out = bytes.NewBuffer(b)
 
 	app.RegisterCommand(&AgeGreeter{})
-	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder", "--age=42"})
+	app.ExecuteWithArgs(context.Background(), []string{"greet:age", "--name", "Fox Mulder", "--age=42"})
 
 	got := app.Out.(*bytes.Buffer).String()
 	expected := "Hello Fox Mulder, you are 42 years old!\n"
@@ -92,10 +92,10 @@ func TestCLI__Help(t *testing.T) {
 	app.Out = bytes.NewBuffer(b)
 
 	app.RegisterCommand(&AgeGreeter{})
-	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder"})
+	app.ExecuteWithArgs(context.Background(), []string{"greet:age", "--name", "Fox Mulder"})
 
 	app.RegisterCommand(&AgeGreeter{})
-	app.ExecuteWithArgs(context.Background(), []string{"greet", "--name", "Fox Mulder"})
+	app.ExecuteWithArgs(context.Background(), []string{"greet:age", "--name", "Fox Mulder"})
 
 	got := app.Out.(*bytes.Buffer).String()
 
@@ -122,11 +122,11 @@ func TestRegisterCommand(t *testing.T) {
 
 			if tt.valid {
 				require.NotPanics(t, func() {
-					app.RegisterCommand(tt.runnable)
+					app.RegisterCommandWithName(tt.runnable, tt.name)
 				})
 			} else {
 				require.Panics(t, func() {
-					app.RegisterCommand(tt.runnable)
+					app.RegisterCommandWithName(tt.runnable, tt.name)
 				})
 			}
 		})

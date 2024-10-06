@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/blakewilliams/fernet"
+	"github.com/blakewilliams/amaro/httprouter"
 )
 
 type responseStatusTracker struct {
@@ -33,8 +33,8 @@ func (r *responseStatusTracker) Header() http.Header {
 	return r.ResponseWriter.Header()
 }
 
-func Logger[ReqCtx fernet.RequestContext](logger *slog.Logger) func(context.Context, ReqCtx, fernet.Handler[ReqCtx]) {
-	return func(ctx context.Context, rctx ReqCtx, next fernet.Handler[ReqCtx]) {
+func Logger[ReqCtx httprouter.RequestContext](logger *slog.Logger) func(context.Context, ReqCtx, httprouter.Handler[ReqCtx]) {
+	return func(ctx context.Context, rctx ReqCtx, next httprouter.Handler[ReqCtx]) {
 		start := time.Now()
 
 		logger.Info(
