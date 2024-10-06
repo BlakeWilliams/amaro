@@ -13,13 +13,13 @@ type requestContext struct {
     renderer *bat.Engine
     defaultRenderData map[string]any
 
-	router.RequestContext
+	httprouter.RequestContext
 }
 
 // newRequestContext returns a new RequestContext factory that router calls for
 // each route and passes the resulting RequestContext to the handler function.
-func newRequestContext(s *Server) func(r router.RequestContext) *requestContext  {
-    return func(r router.RequestContext) *requestContext  {
+func newRequestContext(s *Server) func(r httprouter.RequestContext) *requestContext  {
+    return func(r httprouter.RequestContext) *requestContext  {
         return &requestContext{
             renderer: s.renderer,
             defaultRenderData: make(map[string]any),

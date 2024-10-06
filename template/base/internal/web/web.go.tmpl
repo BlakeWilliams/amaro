@@ -10,7 +10,7 @@ import (
 
 // Server represents the web server and routes of the application.
 type Server struct {
-	router     *router.Router[*requestContext]
+	router     *httprouter.Router[*requestContext]
 	app        *app.Application
 	renderer   *bat.Engine
 }
@@ -23,8 +23,8 @@ func NewServer(app *app.Application) *Server {
     return s
 }
 
-func initRouter(s *Server) *router.Router[*requestContext] {
-    r := router.New[*requestContext](newRequestContext(s))
+func initRouter(s *Server) *httprouter.Router[*requestContext] {
+    r := httprouter.New[*requestContext](newRequestContext(s))
 
     r.Get("/", homeHandler)
 
