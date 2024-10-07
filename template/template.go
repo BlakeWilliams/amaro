@@ -15,7 +15,7 @@ import (
 	"golang.org/x/mod/modfile"
 )
 
-//go:embed base
+//go:embed _base
 var f embed.FS
 var packageNameRegex = regexp.MustCompile(`^[a-z]+$`)
 
@@ -63,9 +63,16 @@ func Generate(packageName string, packageRoot string, out io.Writer) error {
 		"PackageName": packageName,
 	}
 
-	err := fs.WalkDir(f, ".", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(f, ".", func(rawPath string, d fs.DirEntry, err error) error {
+		path := strings.TrimPrefix(rawPath, "_base/")
+		root := strings.TrimSuffix(packageRoot, "/")
+
+		if path == "." || path == "_base" {
+			return nil
+		}
+
 		if d.IsDir() {
-			dirName := strings.TrimSuffix(packageRoot, "/") + "/" + strings.TrimPrefix(path, "base/")
+			dirName := root + "/" + path
 			os.Mkdir(dirName, 0755)
 			logCreate(out, "dir", dirName)
 			return nil
@@ -75,13 +82,15 @@ func Generate(packageName string, packageRoot string, out io.Writer) error {
 			return fmt.Errorf("error walking the embedded file system: %w", err)
 		}
 
-		t, err := template.New(fspath.Base(path)).ParseFS(f, path)
+		t, err := template.New(fspath.Base(path)).ParseFS(f, rawPath)
 		if err != nil {
-			return fmt.Errorf("error parsing template %s: %w", path, err)
+			fmt.Println("error parsing template", rawPath, err)
+			return fmt.Errorf("error parsing template %s: %w", rawPath, err)
 		}
 
-		newFileName := strings.TrimSuffix(packageRoot, "/") + "/" + strings.TrimPrefix(path, "base/")
+		newFileName := packageRoot + "/" + path
 		newFileName = strings.TrimSuffix(newFileName, ".tmpl")
+
 		fileToWrite, err := os.Create(newFileName)
 		if err != nil {
 			return fmt.Errorf("error creating file: %w", err)

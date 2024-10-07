@@ -1,0 +1,46 @@
+package web
+
+import (
+	"github.com/blakewilliams/amaro/httprouter"
+	"github.com/blakewilliams/bat"
+)
+
+// requestContext holds the data needed for the application to render a response
+// to an http request. It embeds the router.RequestContext type, which holds
+// the http.Request and http.ResponseWriter.
+type requestContext struct {
+	renderer          *bat.Engine
+	defaultRenderData map[string]any
+
+	httprouter.RequestContext
+}
+
+// newRequestContext returns a new RequestContext factory that router calls for
+// each route and passes the resulting RequestContext to the handler function.
+func newRequestContext(s *Server) func(r httprouter.RequestContext) *requestContext {
+	return func(r httprouter.RequestContext) *requestContext {
+		return &requestContext{
+			renderer:          s.renderer,
+			defaultRenderData: make(map[string]any),
+		}
+	}
+}
+
+func (r *requestContext) SetPageTitle(title string) {
+	r.defaultRenderData["title"] = title
+}
+
+// Render renders the given template with the provided data. The data is merged
+// with the default render data, and the result is written to the response.
+func (r *requestContext) Render(template string, data map[string]any) {
+	var templateData = make(map[string]any, len(r.defaultRenderData)+len(data))
+	for k, v := range data {
+		templateData[k] = v
+	}
+	for k, v := range r.defaultRenderData {
+		if _, ok := data[k]; !ok {
+			data[k] = v
+		}
+	}
+	r.renderer.Render(r.Response(), template, data)
+}

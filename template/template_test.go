@@ -1,6 +1,7 @@
 package template
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,6 +14,9 @@ func TestGenerate(t *testing.T) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "template-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
+
+	// Replace with os.Stdout for debugging
+	out := io.Discard
 
 	initFile := `package main
 	import (
@@ -51,24 +55,24 @@ func TestGenerate(t *testing.T) {
 	// cd to tempDir and run go test -v
 	tidyCmd := exec.Command("go", "mod", "tidy")
 	tidyCmd.Dir = tempDir
-	tidyCmd.Stderr = os.Stdout
-	tidyCmd.Stdout = os.Stdout
+	tidyCmd.Stderr = out
+	tidyCmd.Stdout = out
 	err = tidyCmd.Run()
 	require.NoError(t, err)
 
 	// cd to tempDir and run go test -v
 	generateCmd := exec.Command("go", "run", "cmd/radical/main.go", "generate")
 	generateCmd.Dir = tempDir
-	generateCmd.Stderr = os.Stdout
-	generateCmd.Stdout = os.Stdout
+	generateCmd.Stderr = out
+	generateCmd.Stdout = out
 	err = generateCmd.Run()
 	require.NoError(t, err)
 
 	// cd to tempDir and run go test -v
 	tidyCmd = exec.Command("go", "mod", "tidy")
 	tidyCmd.Dir = tempDir
-	tidyCmd.Stderr = os.Stdout
-	tidyCmd.Stdout = os.Stdout
+	tidyCmd.Stderr = out
+	tidyCmd.Stdout = out
 	err = tidyCmd.Run()
 	require.NoError(t, err)
 
@@ -78,8 +82,8 @@ func TestGenerate(t *testing.T) {
 
 	testCmd := exec.Command("go", "test", "./...")
 	testCmd.Dir = tempDir
-	testCmd.Stderr = os.Stdout
-	testCmd.Stdout = os.Stdout
+	testCmd.Stderr = out
+	testCmd.Stdout = out
 	err = testCmd.Run()
 	require.NoError(t, err)
 }
