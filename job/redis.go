@@ -21,7 +21,7 @@ func NewRedisStorage(client *redis.Client) *RedisClient {
 	}
 }
 
-func (rc *RedisClient) PushJob(ctx context.Context, queueName string, payload string) error {
+func (rc *RedisClient) Enqueue(ctx context.Context, queueName string, payload string) error {
 	_, err := rc.client.RPush(ctx, queueName, payload).Result()
 
 	if err != nil {
@@ -31,11 +31,11 @@ func (rc *RedisClient) PushJob(ctx context.Context, queueName string, payload st
 	return nil
 }
 
-func (rc *RedisClient) PopJob(ctx context.Context, queueName string) (string, error) {
+func (rc *RedisClient) Dequeue(ctx context.Context, queueName string) (string, error) {
 	result, err := rc.client.BLPop(ctx, rc.Timeout, queueName).Result()
 
 	if err != nil && errors.Is(err, redis.Nil) {
-		return "", fmt.Errorf("redis queue is empty: %w", NothingToPopErr)
+		return "", fmt.Errorf("redis queue is empty: %w", ErrNothingToPop)
 	} else if err != nil {
 		return "", fmt.Errorf("failed to pop job from redis: %s", err)
 	}

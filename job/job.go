@@ -8,11 +8,14 @@ import (
 	"io"
 	"log/slog"
 	"reflect"
+	"time"
 )
 
-var NothingToPopErr = errors.New("nothing to pop")
+var ErrNothingToPop = errors.New("nothing to pop")
 
 type (
+	// JobManager manages background publishing and running defined background
+	// jobs.
 	JobManager[T any] struct {
 		storage    Storage
 		jobContext T
@@ -21,14 +24,18 @@ type (
 		Logger     *slog.Logger
 	}
 
+	// Storage is the interface that must be implemented by any storage
+	// mechanism like redis, memory, etc. to push and pop jobs of of the given
+	// queue.
 	Storage interface {
-		PushJob(ctx context.Context, queueName string, payload string) error
-		PopJob(ctx context.Context, queueName string) (string, error)
+		// Enqueue pushes a job onto the given queue.
+		Enqueue(ctx context.Context, queueName string, payload string) error
+		// Dequeue pops a job off of the given queue.
+		Dequeue(ctx context.Context, queueName string) (string, error)
 	}
 
 	// A Job is any struct that can perform a background job after being
 	// unmarshaled from a string.
-	// background job.
 	Job[T any] interface {
 		PerformJob(T)
 	}
@@ -48,7 +55,7 @@ func New[T any](storage Storage, t T) *JobManager[T] {
 }
 
 // Registers a new queue using the passed in name as the key, which is passed to
-// the storage implementation.
+// the storge implementation.
 func (m *JobManager[T]) RegisterQueue(name string, job Job[T]) {
 	jobType := normalizeType(job)
 	m.jobs[name] = jobType
@@ -74,50 +81,86 @@ func (bm *JobManager[T]) Run(ctx context.Context) error {
 }
 
 func (bm *JobManager[T]) process(ctx context.Context, queue string) {
-	for {
-		if ctx.Err() != nil {
-			break
-		}
-
-		jsonPayload, err := bm.storage.PopJob(ctx, queue)
-
-		if err != nil && errors.Is(err, NothingToPopErr) {
-			continue
-		} else if err != nil {
-			bm.Logger.Error("failed to pop job", "queue", queue, "error", err)
-			continue
-		}
-
-		t := bm.jobs[queue]
-		// Handle pointers
-		if t.Kind() == reflect.Ptr {
-			t = t.Elem()
-		}
-		value := reflect.New(t)
-
-		err = json.Unmarshal([]byte([]byte(jsonPayload)), value.Interface())
-		job := value.Interface().(Job[T])
-
-		if err != nil {
-			bm.Logger.Error("failed to decode job JSON", "queue", queue, "error", err, "payload", jsonPayload)
-			continue
-		}
-
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					bm.Logger.Error("panic in job", "queue", queue, "error", fmt.Sprint(r))
-				}
-			}()
-			job.PerformJob(bm.jobContext)
-		}()
+	for ctx.Err() == nil {
+		bm.ProcessQueue(ctx, queue)
 	}
 }
 
-// PushJob enqueues a job using the given Storage passed to Manager.
+// ProcessQueue processes all jobs in the given queue until the queue is empty.
+// This is intended for use in tests.
+func (jm *JobManager[T]) ProcessQueue(ctx context.Context, queue string) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	queueCh := make(chan string, 1)
+
+	go func() {
+		for ctx.Err() == nil {
+			jsonPayload, err := jm.storage.Dequeue(ctx, queue)
+			if err != nil {
+				jm.Logger.Error("failed to pop job", "queue", queue, "error", err)
+				continue
+			}
+			queueCh <- jsonPayload
+		}
+	}()
+
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			cancel()
+			break loop
+		case <-time.After(1 * time.Millisecond):
+			cancel()
+			break loop
+		case jsonPayload := <-queueCh:
+			jm.processJob(ctx, queue, jsonPayload)
+		}
+	}
+}
+
+func (jm *JobManager[T]) processJob(ctx context.Context, queue string, jobPayload string) {
+	if ctx.Err() != nil {
+		return
+	}
+
+	t := jm.jobs[queue]
+	// Handle pointers
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	value := reflect.New(t)
+
+	err := json.Unmarshal([]byte([]byte(jobPayload)), value.Interface())
+	job := value.Interface().(Job[T])
+
+	if err != nil {
+		jm.Logger.Error("failed to decode job JSON", "queue", queue, "error", err, "payload", jobPayload)
+		return
+	}
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				jm.Logger.Error("panic in job", "queue", queue, "error", fmt.Sprint(r))
+			}
+		}()
+		job.PerformJob(jm.jobContext)
+	}()
+}
+
+// ProcessAll processes all jobs in all queues. This is useful in the test
+// environment when you need to test behavior that includes job processing.
+func (bm *JobManager[T]) ProcessAll(ctx context.Context) {
+	for queue := range bm.jobs {
+		bm.ProcessQueue(ctx, queue)
+	}
+}
+
+// Enqueue enqueues a job using the given Storage passed to Manager.
 // The queue name is automatically determined based on the type of Job as
 // defined by RegisterQueue.
-func (bm *JobManager[T]) PushJob(ctx context.Context, job Job[T]) error {
+func (bm *JobManager[T]) Enqueue(ctx context.Context, job Job[T]) error {
 	t := normalizeType(job)
 
 	queueName, ok := bm.queueMap[t]
@@ -131,7 +174,7 @@ func (bm *JobManager[T]) PushJob(ctx context.Context, job Job[T]) error {
 		return fmt.Errorf("failed to encode job: %v", err)
 	}
 
-	err = bm.storage.PushJob(ctx, queueName, string(encoded))
+	err = bm.storage.Enqueue(ctx, queueName, string(encoded))
 
 	if err != nil {
 		return fmt.Errorf("failed to push job to storage: %v", err)

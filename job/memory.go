@@ -15,7 +15,7 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-func (ms *MemoryStorage) PushJob(ctx context.Context, queueName string, payload string) error {
+func (ms *MemoryStorage) Enqueue(ctx context.Context, queueName string, payload string) error {
 	if _, ok := ms.queues[queueName]; !ok {
 		ms.queues[queueName] = list.New()
 	}
@@ -25,9 +25,9 @@ func (ms *MemoryStorage) PushJob(ctx context.Context, queueName string, payload 
 	return nil
 }
 
-func (ms *MemoryStorage) PopJob(ctx context.Context, queueName string) (string, error) {
+func (ms *MemoryStorage) Dequeue(ctx context.Context, queueName string) (string, error) {
 	if _, ok := ms.queues[queueName]; !ok {
-		return "", NothingToPopErr
+		return "", ErrNothingToPop
 	}
 
 	value := ms.queues[queueName].Front()
@@ -37,5 +37,5 @@ func (ms *MemoryStorage) PopJob(ctx context.Context, queueName string) (string, 
 		return value.Value.(string), nil
 	}
 
-	return "", NothingToPopErr
+	return "", ErrNothingToPop
 }

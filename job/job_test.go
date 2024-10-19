@@ -31,7 +31,7 @@ func TestEnqueueAndPerform(t *testing.T) {
 	run = false
 	bm := New(NewMemoryStorage(), jobContext)
 	bm.RegisterQueue("test", &fakeJob{})
-	err := bm.PushJob(context.TODO(), &fakeJob{Value: "omg"})
+	err := bm.Enqueue(context.TODO(), &fakeJob{Value: "omg"})
 
 	require.NoError(t, err)
 
@@ -52,7 +52,7 @@ func TestEnqueueAndPerformNonPointer(t *testing.T) {
 	run = false
 	bm := New(NewMemoryStorage(), jobContext)
 	bm.RegisterQueue("test", fakeJob{})
-	err := bm.PushJob(context.TODO(), fakeJob{Value: "omg"})
+	err := bm.Enqueue(context.TODO(), fakeJob{Value: "omg"})
 
 	require.NoError(t, err)
 
@@ -85,9 +85,9 @@ func TestHandleEmptyQueue(t *testing.T) {
 	require.False(t, run)
 }
 
-func TestPushJob_NoQueueDefined(t *testing.T) {
+func TestEnqueue_NoQueueDefined(t *testing.T) {
 	bm := New(NewMemoryStorage(), jobContext)
-	err := bm.PushJob(context.TODO(), &fakeJob{})
+	err := bm.Enqueue(context.TODO(), &fakeJob{})
 
 	require.ErrorContains(t, err, "failed to find queue for fakeJob")
 }
@@ -96,4 +96,22 @@ func ExampleManager_RegisterQueue() {
 	bm := New(NewMemoryStorage(), jobContext)
 
 	bm.RegisterQueue("test", &fakeJob{})
+}
+
+func TestProcessQueue(t *testing.T) {
+	run = false
+	bm := New(NewMemoryStorage(), jobContext)
+	bm.RegisterQueue("test", fakeJob{})
+	err := bm.Enqueue(context.TODO(), fakeJob{Value: "omg"})
+
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.False(t, run)
+
+	bm.ProcessQueue(ctx, "test")
+
+	require.True(t, run)
 }
