@@ -92,7 +92,7 @@ func TestEnqueue_NoQueueDefined(t *testing.T) {
 	require.ErrorContains(t, err, "failed to find queue for fakeJob")
 }
 
-func ExampleManager_RegisterQueue() {
+func ExampleJobManager_RegisterQueue() {
 	bm := New(NewMemoryStorage(), jobContext)
 
 	bm.RegisterQueue("test", &fakeJob{})
