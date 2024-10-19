@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"reflect"
-	"time"
 )
 
 var ErrNothingToPop = errors.New("nothing to pop")
@@ -98,7 +97,8 @@ func (jm *JobManager[T]) ProcessQueue(ctx context.Context, queue string) {
 			jsonPayload, err := jm.storage.Dequeue(ctx, queue)
 			if err != nil {
 				jm.Logger.Error("failed to pop job", "queue", queue, "error", err)
-				continue
+				cancel()
+				return
 			}
 			queueCh <- jsonPayload
 		}
@@ -110,20 +110,13 @@ loop:
 		case <-ctx.Done():
 			cancel()
 			break loop
-		case <-time.After(1 * time.Millisecond):
-			cancel()
-			break loop
 		case jsonPayload := <-queueCh:
-			jm.processJob(ctx, queue, jsonPayload)
+			jm.processJob(queue, jsonPayload)
 		}
 	}
 }
 
-func (jm *JobManager[T]) processJob(ctx context.Context, queue string, jobPayload string) {
-	if ctx.Err() != nil {
-		return
-	}
-
+func (jm *JobManager[T]) processJob(queue string, jobPayload string) {
 	t := jm.jobs[queue]
 	// Handle pointers
 	if t.Kind() == reflect.Ptr {
