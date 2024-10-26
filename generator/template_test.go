@@ -1,7 +1,6 @@
-package template
+package generator
 
 import (
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,7 +15,7 @@ func TestGenerate(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Replace with os.Stdout for debugging
-	out := io.Discard
+	out := os.Stdout
 
 	initFile := `package main
 	import (
@@ -45,7 +44,7 @@ func TestGenerate(t *testing.T) {
 	require.NoError(t, err)
 
 	cwd, err := os.Getwd()
-	cwd = strings.TrimSuffix(cwd, "/template")
+	cwd = strings.TrimSuffix(cwd, "/generator")
 	require.NoError(t, err)
 	replaceCmd := exec.Command("go", "mod", "edit", "-replace", "github.com/blakewilliams/amaro="+cwd)
 	replaceCmd.Dir = tempDir
@@ -76,9 +75,9 @@ func TestGenerate(t *testing.T) {
 	err = tidyCmd.Run()
 	require.NoError(t, err)
 
-	require.FileExists(t, tempDir+"/internal/app/app.go")
+	require.FileExists(t, tempDir+"/internal/core/application.go")
 
-	require.FileExists(t, tempDir+"/internal/web/web.go")
+	require.FileExists(t, tempDir+"/internal/web/server.go")
 
 	testCmd := exec.Command("go", "test", "./...")
 	testCmd.Dir = tempDir

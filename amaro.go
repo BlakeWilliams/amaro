@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/blakewilliams/amaro/template"
+	"github.com/blakewilliams/amaro/generator"
 )
 
 // TODO
@@ -83,7 +83,7 @@ func NewApplication(name string, opts ...ApplicationOption) *Application {
 	}
 
 	if !app.skipGenerator {
-		generator := &template.Generator{}
+		generator := &generator.Generator{}
 		app.RegisterCommand(generator)
 	}
 
