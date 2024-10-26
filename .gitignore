@@ -1,1 +1,3 @@
 /testdata
+node_modules
+assets/.vite
