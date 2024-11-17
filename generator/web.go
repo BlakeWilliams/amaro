@@ -25,7 +25,12 @@ func regiterRoutes(s *Server) {
 const serverTemplate = `package web
 
 import (
+	"context"
+	"net/http"
+	"runtime/debug"
 	"github.com/blakewilliams/amaro/httprouter"
+	"github.com/blakewilliams/amaro/httprouter/metal"
+	"github.com/blakewilliams/amaro/httprouter/middleware"
 	"github.com/blakewilliams/glam"
 	"{{.PackageName}}/internal/core"
 )
@@ -41,6 +46,8 @@ type Server struct {
 func NewServer(app *core.Application) *Server {
 	s := &Server{app: app}
 	s.router = httprouter.New[*requestContext](newRequestContext(s))
+	s.router.UseMetal(metal.MethodRewrite)
+	s.router.Use(middleware.ErrorHandler(app.Logger, errorHandler))
 
 	return s
 }
@@ -51,7 +58,22 @@ func initRouter(s *Server) *httprouter.Router[*requestContext] {
 	r.Get("/", homeHandler)
 
 	return r
-}`
+}
+
+func errorHandler(ctx context.Context, rc *requestContext, r any) {
+	if rc.Environment == "prod" {
+		rc.Response().WriteHeader(http.StatusInternalServerError)
+		rc.Render(ctx, "errors/500.html")
+		return
+	}
+
+	// render the error message and a stacktrace
+	rc.Response().WriteHeader(http.StatusInternalServerError)
+	_, _ = rc.Response().Write([]byte(r.(error).Error()))
+	_, _ = rc.Response().Write([]byte("\n\n"))
+	_, _ = rc.Response().Write([]byte(debug.Stack()))
+}
+`
 
 const requestContextTemplate = `package web
 
@@ -62,6 +84,7 @@ import (
 	"github.com/blakewilliams/amaro/httprouter"
 	"github.com/blakewilliams/glam"
 	"{{.PackageName}}/internal/web/components"
+	"{{.PackageName}}/internal/core"
 )
 
 // requestContext holds the data needed for the application to render a response
@@ -71,6 +94,7 @@ type requestContext struct {
 	Title string
 	renderer *glam.Engine
 	httprouter.RequestContext
+	Environment core.Env
 }
 
 // newRequestContext returns a new RequestContext factory that router calls for

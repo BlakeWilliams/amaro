@@ -1,5 +1,3 @@
-github.com/blakewilliams/amaro/httprouter v0.0.0-20231225185908-409062eaea59 h1:hxiRttqR8f8YFDA5oUn4TWQfqhk1NGmgTIj6S5pr1Gk=
-github.com/blakewilliams/amaro/httprouter v0.0.0-20231225185908-409062eaea59/go.mod h1:dVXEHkyWl0fE1Q53fzqUWpHhEDuJWFmLqttQG4CiotE=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=
