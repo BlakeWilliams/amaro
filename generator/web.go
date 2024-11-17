@@ -5,10 +5,7 @@ func generateWeb(d *driver) error {
 		"PackageName": d.packageName,
 	}
 
-	// Create the server
 	d.createFile("internal/web/server.go", serverTemplate, templateData)
-
-	// Create the routes file
 	d.createFile("internal/web/routes.go", `package web
 
 func regiterRoutes(s *Server) {

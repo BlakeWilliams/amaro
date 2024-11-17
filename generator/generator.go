@@ -2,7 +2,6 @@ package generator
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"io"
 	"os"
@@ -13,8 +12,6 @@ import (
 	"golang.org/x/mod/modfile"
 )
 
-//go:embed _base
-var f embed.FS
 var packageNameRegex = regexp.MustCompile(`^[a-z]+$`)
 
 type Generator struct {
