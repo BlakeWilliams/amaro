@@ -15,9 +15,12 @@ func regiterRoutes(s *Server) {
 
 	d.createFile("internal/web/request_context.go", requestContextTemplate, templateData)
 	d.createFile("internal/web/site_handlers.go", siteHandlersTemplate, templateData)
+	d.createFile("internal/web/home_handler_test.go", homeHandlerTest, templateData)
 	d.createFile("internal/web/components/components.go", componentsTemplate, templateData)
+	d.createFile("internal/web/components/errors.go", errorsTemplate, templateData)
 	d.createFile("internal/web/components/templates/main_layout.html", mainLayoutTemplate, templateData)
 	d.createFile("internal/web/components/templates/site/home.html", homeTemplate, templateData)
+	d.createFile("internal/web/components/templates/errors/500.html", errorsTemplateMarkup, templateData)
 
 	return nil
 }
@@ -27,10 +30,10 @@ const serverTemplate = `package web
 import (
 	"context"
 	"net/http"
-	"runtime/debug"
 	"github.com/blakewilliams/amaro/httprouter"
 	"github.com/blakewilliams/amaro/httprouter/metal"
 	"github.com/blakewilliams/amaro/httprouter/middleware"
+	"{{.PackageName}}/internal/web/components"
 	"github.com/blakewilliams/glam"
 	"{{.PackageName}}/internal/core"
 )
@@ -46,14 +49,15 @@ type Server struct {
 func NewServer(app *core.Application) *Server {
 	s := &Server{app: app}
 	s.router = initRouter(s)
-	s.router.UseMetal(metal.MethodRewrite)
-	s.router.Use(middleware.ErrorHandler(app.Logger, errorHandler))
+	s.renderer = components.New(nil)
 
 	return s
 }
 
 func initRouter(s *Server) *httprouter.Router[*requestContext] {
 	r := httprouter.New[*requestContext](newRequestContext(s))
+	r.UseMetal(metal.MethodRewrite)
+	r.Use(middleware.ErrorHandler(s.app.Logger, errorHandler))
 
 	r.Get("/", homeHandler)
 
@@ -63,15 +67,13 @@ func initRouter(s *Server) *httprouter.Router[*requestContext] {
 func errorHandler(ctx context.Context, rc *requestContext, r any) {
 	if rc.Environment == "prod" {
 		rc.Response().WriteHeader(http.StatusInternalServerError)
-		rc.Render(ctx, "errors/500.html")
+		rc.Render(ctx, components.Err500{Environment: rc.Environment, Error: r})
 		return
 	}
+}
 
-	// render the error message and a stacktrace
-	rc.Response().WriteHeader(http.StatusInternalServerError)
-	_, _ = rc.Response().Write([]byte(r.(error).Error()))
-	_, _ = rc.Response().Write([]byte("\n\n"))
-	_, _ = rc.Response().Write([]byte(debug.Stack()))
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.router.ServeHTTP(w, r)
 }
 `
 
@@ -103,6 +105,7 @@ func newRequestContext(s *Server) func(r httprouter.RequestContext) *requestCont
 	return func(r httprouter.RequestContext) *requestContext {
 		return &requestContext{
 			renderer:          s.renderer,
+			RequestContext:	   r,
 		}
 	}
 }
@@ -180,8 +183,9 @@ func New(funcMap glam.FuncMap) *glam.Engine {
 
 	e := glam.New(funcs)
 	err := e.RegisterManyFS(templateFS, map[any]string{
-		&MainLayout{}:   "templates/layout.html",
-		&Home{}:   "templates/layout.html",
+		&MainLayout{}:   "templates/main_layout.html",
+		&Home{}:   "templates/site/home.html",
+		&Err500{}:   "templates/errors/500.html",
 	})
 
 	if err != nil {
@@ -209,6 +213,47 @@ type Home struct {
 	Message string
 }`
 
+const errorsTemplate = `package components
+
+import (
+	"runtime/debug"
+)
+
+import (
+	"{{.PackageName}}/internal/core"
+)
+
+type Err500 struct {
+	Environment core.Env
+	Error any
+}
+
+func (e *Err500) renderDetailedError() bool {
+	return e.Environment != "production"
+}
+
+func (e *Err500) errorType() string {
+	if err, ok := e.Error.(error); ok {
+		return err.(error).Error()
+	} else {
+		return "Unknown error type"
+	}
+}
+
+func (e *Err500) errorDetails() string {
+	return string(debug.Stack())
+}
+`
+
+const errorsTemplateMarkup = `
+<h1>Oops, something went wrong!</h1>
+
+{{"{{ if .renderDetailedError }}"}}
+  <pre>{{"{{.errorType}}"}}</pre>
+  <pre>{{"{{.errorDetails}}"}}</pre>
+{{"{{ end }}"}}
+`
+
 const mainLayoutTemplate = `<!DOCTYPE html>
 <html lang="en">
 
@@ -216,13 +261,48 @@ const mainLayoutTemplate = `<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="ie=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="{{ .MainJSPath }}"></script>
   {{"{{.TitleTag}}"}}
 </head>
 
 <body class="dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-  <h1>{{"{{children}}"}}</h1>
+  <h1>{{"{{.Children}}"}}</h1>
 </body>
 </html>`
 
-const homeTemplate = `<h1>{{"{{Message}}"}}</h1>`
+const homeTemplate = `<h1>{{"{{.Message}}"}}</h1>`
+
+const homeHandlerTest = `package web
+
+import (
+	"log/slog"
+	"io"
+	"testing"
+	"{{.PackageName}}/internal/core"
+	"github.com/blakewilliams/amaro/apptest"
+	"github.com/stretchr/testify/require"
+)
+
+func startApp(t testing.TB) (*Server, func()) {
+	app := &core.Application{
+		Environment: core.EnvTest,
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	server := NewServer(app)
+
+	return server, func() {
+		// TODO add cleanup here, like DB stopping services
+	}
+}
+
+func TestHomeHandler(t *testing.T) {
+	app, stop := startApp(t)
+	defer stop()
+
+	session := apptest.New(app)
+	res := session.Get("/", nil)
+
+	require.Equal(t, 200, res.Code())
+	require.Contains(t, res.Body(), "Hello, amaro")
+}
+`

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 	"text/template"
@@ -74,6 +75,7 @@ func (d *driver) createFile(relPath string, rawTemplate string, args any) error 
 	defer fileToWrite.Close()
 	err = t.Execute(fileToWrite, args)
 	if err != nil {
+		fmt.Fprintf(d.out, "Error creating %s: %s", relPath, err)
 		return fmt.Errorf("error executing template %s: %w", relPath, err)
 	}
 
@@ -89,8 +91,26 @@ func Generate(packageName string, packageRoot string, out io.Writer) error {
 		out:         out,
 	}
 
+	cmd := exec.Command("go", "get", "github.com/stretchr/testify/require")
+	cmd.Dir = packageRoot
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("error running installing testify/require: %w", err)
+	}
+
 	generateApp(driver)
 	generateWeb(driver)
+
+	cmd = exec.Command("go", "mod", "tidy")
+	cmd.Dir = packageRoot
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("error running installing testify/require: %w", err)
+	}
 
 	return nil
 }

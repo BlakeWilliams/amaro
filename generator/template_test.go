@@ -76,7 +76,6 @@ func TestGenerate(t *testing.T) {
 	require.NoError(t, err)
 
 	require.FileExists(t, tempDir+"/internal/core/application.go")
-
 	require.FileExists(t, tempDir+"/internal/web/server.go")
 
 	testCmd := exec.Command("go", "test", "./...")
@@ -85,6 +84,4 @@ func TestGenerate(t *testing.T) {
 	testCmd.Stdout = out
 	err = testCmd.Run()
 	require.NoError(t, err)
-
-	// TODO run server and http GET the homepage
 }
