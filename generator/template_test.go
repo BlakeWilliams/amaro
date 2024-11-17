@@ -85,4 +85,6 @@ func TestGenerate(t *testing.T) {
 	testCmd.Stdout = out
 	err = testCmd.Run()
 	require.NoError(t, err)
+
+	// TODO run server and http GET the homepage
 }

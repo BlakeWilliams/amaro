@@ -45,7 +45,7 @@ type Server struct {
 
 func NewServer(app *core.Application) *Server {
 	s := &Server{app: app}
-	s.router = httprouter.New[*requestContext](newRequestContext(s))
+	s.router = initRouter(s)
 	s.router.UseMetal(metal.MethodRewrite)
 	s.router.Use(middleware.ErrorHandler(app.Logger, errorHandler))
 
