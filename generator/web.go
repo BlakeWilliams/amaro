@@ -303,6 +303,6 @@ func TestHomeHandler(t *testing.T) {
 	res := session.Get("/", nil)
 
 	require.Equal(t, 200, res.Code())
-	require.Contains(t, res.Body(), "Hello, amaro")
+	require.Contains(t, res.BodyString(), "Hello, amaro")
 }
 `
