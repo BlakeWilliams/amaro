@@ -1,6 +1,7 @@
 package apptest
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +18,7 @@ var RedirectCodes = []int{
 
 type Response struct {
 	RawResponse *httptest.ResponseRecorder
-	bodyCache   []byte
+	bodyCache   *bytes.Buffer
 	mu          sync.Mutex
 }
 
@@ -35,19 +36,16 @@ func (r *Response) IsRedirect() bool {
 	return false
 }
 
-func (r *Response) Body() []byte {
+func (r *Response) Body() *bytes.Buffer {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.bodyCache == nil {
-		r.bodyCache, _ = io.ReadAll(r.RawResponse.Result().Body)
+		body, _ := io.ReadAll(r.RawResponse.Result().Body)
+		r.bodyCache = bytes.NewBuffer(body)
 	}
 
 	return r.bodyCache
-}
-
-func (r *Response) BodyString() string {
-	return string(r.Body())
 }
 
 func (r *Response) Header() http.Header {

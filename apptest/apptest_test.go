@@ -19,8 +19,8 @@ func TestResponseBody_MultiReadable(t *testing.T) {
 
 	res := Response{RawResponse: rec}
 
-	require.Equal(t, "omg wow", res.BodyString())
-	require.Equal(t, "omg wow", res.BodyString())
+	require.Equal(t, "omg wow", res.Body().String())
+	require.Equal(t, "omg wow", res.Body().String())
 }
 
 func TestNonBody(t *testing.T) {

@@ -17,8 +17,6 @@ type Session struct {
 	app       http.Handler
 }
 
-// New creates a new "session" for the given application. It handles cookies,
-// can follow redirects, etc.
 func New(app http.Handler) *Session {
 	req := &Session{}
 	jar, err := cookiejar.New(nil)
