@@ -15,12 +15,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/blakewilliams/amaro/generator"
 )
 
 // TODO
-// - Skip running the generator if the app directory already exists
 // - Add a layout to the site
 // - Add tests via apptest
 // - Run gofmt on the generated files
@@ -39,8 +36,6 @@ type (
 		runnables            map[string]Runnable
 		runnableOrder        []string
 		runnableDescriptions map[string]string
-
-		skipGenerator bool
 	}
 
 	// Runnable is an interface that can be implemented by any type that
@@ -53,12 +48,6 @@ type (
 )
 
 type ApplicationOption func(*Application)
-
-func WithoutGeneratorCommand() func(a *Application) {
-	return func(a *Application) {
-		a.skipGenerator = true
-	}
-}
 
 func WithCommands(commands ...Runnable) func(a *Application) {
 	return func(a *Application) {
@@ -82,11 +71,6 @@ func NewApplication(name string, opts ...ApplicationOption) *Application {
 		opt(app)
 	}
 
-	if !app.skipGenerator {
-		generator := &generator.Generator{}
-		app.RegisterCommand(generator)
-	}
-
 	return app
 }
 
@@ -94,7 +78,6 @@ func NewApplication(name string, opts ...ApplicationOption) *Application {
 // If no runnable matches, the help text is printed.
 func (a *Application) Execute(ctx context.Context) {
 	args := os.Args[1:]
-
 	a.ExecuteWithArgs(ctx, args)
 }
 
@@ -109,7 +92,6 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 
 	go func() {
 		<-c
-		fmt.Println("CANCEL")
 		done()
 	}()
 

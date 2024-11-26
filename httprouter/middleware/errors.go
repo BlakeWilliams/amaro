@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"runtime/debug"
 
 	"github.com/blakewilliams/amaro/httprouter"
 )
@@ -18,7 +19,11 @@ func ErrorHandler[T httprouter.RequestContext](
 		defer func() {
 			if rec := recover(); rec != nil {
 				if err, ok := rec.(error); ok {
-					log.Error("recovered in middleware", slog.String("error", err.Error()))
+					log.Error(
+						"recovered in middleware",
+						slog.String("error", err.Error()),
+						slog.String("stack", string(debug.Stack())),
+					)
 				} else {
 					log.Error("recovered in middleware")
 				}

@@ -134,7 +134,7 @@ func TestRegisterCommand(t *testing.T) {
 }
 
 func TestHelp(t *testing.T) {
-	app := NewApplication("test", WithoutGeneratorCommand())
+	app := NewApplication("test")
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
