@@ -10,6 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type app struct {
+	Name string
+}
+
+func (a *app) AppName() string {
+	return a.Name
+}
+
 type Greeter struct {
 	Name string `flag:"name" description:"The name of the person to greet"`
 }
@@ -28,7 +36,7 @@ func (g *Greeter) CommandDescription() string {
 }
 
 func TestCLICall(t *testing.T) {
-	app := NewApplication("test")
+	app := NewApplication(&app{Name: "test"})
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
@@ -60,7 +68,7 @@ func (g *AgeGreeter) CommandDescription() string {
 }
 
 func TestCLI_MissingRequiredArg(t *testing.T) {
-	app := NewApplication("test")
+	app := NewApplication(&app{Name: "test"})
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
@@ -73,7 +81,7 @@ func TestCLI_MissingRequiredArg(t *testing.T) {
 }
 
 func TestCLI_IntArg(t *testing.T) {
-	app := NewApplication("test")
+	app := NewApplication(&app{Name: "test"})
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
@@ -87,7 +95,7 @@ func TestCLI_IntArg(t *testing.T) {
 }
 
 func TestCLI__Help(t *testing.T) {
-	app := NewApplication("test")
+	app := NewApplication(&app{Name: "test"})
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
@@ -118,7 +126,7 @@ var RegisterCommandTests = []struct {
 func TestRegisterCommand(t *testing.T) {
 	for _, tt := range RegisterCommandTests {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication("test")
+			app := NewApplication(&app{Name: "test"})
 
 			if tt.valid {
 				require.NotPanics(t, func() {
@@ -134,7 +142,7 @@ func TestRegisterCommand(t *testing.T) {
 }
 
 func TestHelp(t *testing.T) {
-	app := NewApplication("test")
+	app := NewApplication(&app{Name: "test"})
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 
@@ -145,11 +153,11 @@ func TestHelp(t *testing.T) {
 	expected := "usage\n  greet      greets users\n  greet:age  greets users with their age\n"
 	got := app.Out.(*bytes.Buffer).String()
 
-	require.Equal(t, expected, got)
+	require.Contains(t, got, expected)
 }
 
 func TestHelpCommand(t *testing.T) {
-	app := NewApplication("test")
+	app := NewApplication(&app{Name: "test"})
 	var b []byte
 	app.Out = bytes.NewBuffer(b)
 

@@ -1,50 +1,30 @@
 # Amaro
 
-Amaro is an experimental CLI framework for Go applications. It's intended to be
-extensible so first and third party plugins can be added to extend the
-functionality of the CLI. For example, a database library may register rollback
-and migrate commands to the CLI and a web framework may register a server
-command.
+Amaro is a composable application framework for Go, aiming to create a small ecosystem of components like http routers, job runners, test helpers, and other frameworks/tooling necessary to make complex Go applications.
 
-Heavy inspiration was taken from Rails/Rake.
+## Getting Started
 
-## Installation
+The core Amaro package (github.com/blakewilliams/amaro) is focused on creating runnable commands in your project, and is how other packages hook into your project.
 
-```bash
-go get github.com/blakewilliams/amaro
-```
-
-## Usage
+For example, to get started with a web project you would create `cmd/appname/main.go` and include the following:
 
 ```go
 package main
 
 import (
-    "fmt"
-    "os"
+	"context"
 
-    "github.com/blakewilliams/amaro"
+	"github.com/blakewilliams/amaro"
+	"github.com/blakewilliams/amaro/_template/internal/web"
 )
 
-type serverCmd struct {
-    Addr string `flag:"address"`
-}
-
 func main() {
-    app := amaro.NewApplication("my app)
-    app.RegisterCommand(&serverCmd{})
-    app.Execute(context.Background())
+	runner := amaro.NewApplication("myapp")
+	runner.RegisterCommand(&web.Command{
+		Addr: ":8080",
+	})
+	runner.Execute(context.TODO())
 }
 ```
 
-Then, run your app:
-
-```bash
-go run main.go server --address localhost:3000
-```
-
-## Router
-
-## JobManager
-
-
+Then you can run `go run cmd/appname/main.go generate:core` to generate the base files of the project.
