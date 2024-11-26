@@ -15,9 +15,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/blakewilliams/amaro/generator"
 )
 
 // TODO
+// - Skip running the generator if the app directory already exists
 // - Add a layout to the site
 // - Add tests via apptest
 // - Run gofmt on the generated files
@@ -25,10 +28,14 @@ import (
 // 	 - Register the app in the main cmd
 //   - Add DevServer support – optional flag?
 
+type NamedApplication interface {
+	AppName() string
+}
+
 type (
-	Application struct {
+	Application[T NamedApplication] struct {
 		// The name of the application
-		Name string
+		app T
 
 		// Out is the writer to which output is written. If nil, os.Stdout is used.
 		Out io.Writer
@@ -36,6 +43,8 @@ type (
 		runnables            map[string]Runnable
 		runnableOrder        []string
 		runnableDescriptions map[string]string
+
+		skipGenerator bool
 	}
 
 	// Runnable is an interface that can be implemented by any type that
@@ -47,28 +56,19 @@ type (
 	}
 )
 
-type ApplicationOption func(*Application)
-
-func WithCommands(commands ...Runnable) func(a *Application) {
-	return func(a *Application) {
-		for _, cmd := range commands {
-			a.RegisterCommand(cmd)
-		}
-	}
-}
-
 // NewApplication creates a new application instance.
-func NewApplication(name string, opts ...ApplicationOption) *Application {
-	app := &Application{
-		Name:                 name,
+func NewApplication[T NamedApplication](a T) *Application[T] {
+	app := &Application[T]{
+		app:                  a,
 		runnables:            make(map[string]Runnable, 0),
 		runnableOrder:        make([]string, 0),
 		runnableDescriptions: make(map[string]string, 0),
 		Out:                  os.Stdout,
 	}
 
-	for _, opt := range opts {
-		opt(app)
+	if !app.skipGenerator {
+		generator := &generator.Generator{}
+		app.RegisterCommand(generator)
 	}
 
 	return app
@@ -76,14 +76,15 @@ func NewApplication(name string, opts ...ApplicationOption) *Application {
 
 // Execute runs the registered runnable that matches the command line arguments.
 // If no runnable matches, the help text is printed.
-func (a *Application) Execute(ctx context.Context) {
+func (a *Application[T]) Execute(ctx context.Context) {
 	args := os.Args[1:]
+
 	a.ExecuteWithArgs(ctx, args)
 }
 
 // ExecuteWithArgs runs the registered runnable that matches the command line
 // arguments. If no runnable matches, the help text is printed.
-func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
+func (a *Application[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
@@ -92,6 +93,7 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 
 	go func() {
 		<-c
+		fmt.Println("CANCEL")
 		done()
 	}()
 
@@ -201,12 +203,12 @@ func (a *Application) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 var cmdNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z:]+$`)
 
 // RegisterCommand adds a runnable to the application that can be run via the CLI.
-func (a *Application) RegisterCommand(runnable Runnable) {
+func (a *Application[T]) RegisterCommand(runnable Runnable) {
 	name := runnable.CommandName()
 	a.RegisterCommandWithName(runnable, name)
 }
 
-func (a *Application) RegisterCommandWithName(runnable Runnable, name string) {
+func (a *Application[T]) RegisterCommandWithName(runnable Runnable, name string) {
 	if name == "help" {
 		panic("cannot register command named help")
 	}
@@ -224,7 +226,7 @@ func (a *Application) RegisterCommandWithName(runnable Runnable, name string) {
 	a.runnableDescriptions[name] = runnable.CommandDescription()
 }
 
-func (a *Application) Help() {
+func (a *Application[T]) Help() {
 	_, _ = a.Out.Write([]byte("usage\n"))
 
 	longestRunnable := 2
@@ -246,7 +248,7 @@ func (a *Application) Help() {
 	}
 }
 
-func (a *Application) HelpCommand(cmdName string) {
+func (a *Application[T]) HelpCommand(cmdName string) {
 	cmd, ok := a.runnables[cmdName]
 	if !ok {
 		fmt.Fprintf(a.Out, "unknown command: %s\n", cmdName)
