@@ -1,12 +1,12 @@
 package session
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 
 	"github.com/blakewilliams/amaro/httprouter"
 )
@@ -40,19 +40,27 @@ func Middleware[RC Persistable[T], T any](store Store[T]) func(ctx context.Conte
 			panic(err)
 		}
 
-		originalData, err := store.FromCookie(cookie)
+		data, err := store.FromCookie(cookie)
 		if err != nil {
 			panic(err)
 		}
 
-		data, err := store.FromCookie(cookie)
+		// Marshal the original data so that we can check if any has changed at
+		// the end of the request when determining if we should send an updated
+		// cookie
+		originalData, err := store.marshal(data)
 		if err != nil {
 			panic(err)
 		}
 		rc.SetSessionData(data)
 
 		defer func() {
-			if !reflect.DeepEqual(originalData, rc.SessionData()) {
+			newData, err := store.marshal(rc.SessionData())
+			if err != nil {
+				panic(err)
+			}
+
+			if !bytes.Equal(newData, originalData) {
 				err = store.Write(rc, rc.SessionData())
 				if err != nil {
 					panic(err)
@@ -158,7 +166,7 @@ func (s Store[T]) FromCookie(cookie *http.Cookie) (T, error) {
 // verifier, then writes it to the passed in httprouter.RequestContext using the
 // name provided by New.
 func (s Store[T]) Write(rc httprouter.RequestContext, data T) error {
-	cookie, err := s.cookie(data)
+	cookie, err := s.ToCookie(data)
 	if err != nil {
 		return err
 	}
@@ -168,13 +176,17 @@ func (s Store[T]) Write(rc httprouter.RequestContext, data T) error {
 	return nil
 }
 
-// cookie returns the underlying http.cookie that is used to store the session.
-func (s Store[T]) cookie(data T) (*http.Cookie, error) {
+func (s Store[T]) marshal(data T) ([]byte, error) {
 	jsonValue, err := json.Marshal(data)
-
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshal session data: %w", err)
 	}
+	return jsonValue, nil
+}
+
+// ToCookie returns the underlying http.ToCookie that is used to store the session.
+func (s Store[T]) ToCookie(data T) (*http.Cookie, error) {
+	jsonValue, err := s.marshal(data)
 
 	encodedData, err := s.verifier.Encode(jsonValue)
 	if err != nil {
