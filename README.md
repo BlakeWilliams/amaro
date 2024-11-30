@@ -15,16 +15,39 @@ import (
 	"context"
 
 	"github.com/blakewilliams/amaro"
-	"github.com/blakewilliams/amaro/_template/internal/web"
+    "github.com/you/project/core"
 )
 
 func main() {
-	runner := amaro.NewApplication("myapp")
-	runner.RegisterCommand(&web.Command{
-		Addr: ":8080",
-	})
+	// Application must implement `AppName()` and `Log()`
+	runner := amaro.NewApplication(&core.Application{
+		// your application configuration
+    })
 	runner.Execute(context.TODO())
 }
 ```
 
-Then you can run `go run cmd/appname/main.go generate:core` to generate the base files of the project.
+This requires a "core" application, that must implement the `amaro.Application` interface.
+
+## Web
+
+TODO document how to bootstrap a web app
+
+## Adding a command
+
+Adding commands is simple, implement the `Command[T]` interface on a struct (typically a dedicated struct):
+
+```
+type GreetCmd[T amaro.Application] struct {
+	Name string
+}
+
+func (g *GreetCmd[T]) CommandName() string { return "greet" }
+func (g *GreetCmd[T]) CommandDescription() string { return "Greets you" }
+// The actual command
+func (g *GreetCmd[T]) RunCommand(ctx context.Context, app T) {
+	app.Log(fmt.Sprintf("Hello, %s!", g.Name))
+}
+```
+
+Then register your command in your `main` function like `runner.RegisterCommand(&GreetCmd{Name: "Fox Mulder"})` and run your command with `go run <your cmd path> greet`!
