@@ -7,7 +7,6 @@ package amaro
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"reflect"
@@ -19,55 +18,43 @@ import (
 	"github.com/blakewilliams/amaro/generator"
 )
 
-// TODO
-// - Skip running the generator if the app directory already exists
-// - Add a layout to the site
-// - Add tests via apptest
-// - Run gofmt on the generated files
-// - Add post generate instructions to the output indicating what to do next
-// 	 - Register the app in the main cmd
-//   - Add DevServer support – optional flag?
-
-type NamedApplication interface {
+type Application interface {
 	AppName() string
+	Log(string)
 }
 
 type (
-	Application[T NamedApplication] struct {
+	Runner[T Application] struct {
 		// The name of the application
 		app T
 
-		// Out is the writer to which output is written. If nil, os.Stdout is used.
-		Out io.Writer
-
-		runnables            map[string]Runnable
+		runnables            map[string]Command[T]
 		runnableOrder        []string
 		runnableDescriptions map[string]string
 
 		skipGenerator bool
 	}
 
-	// Runnable is an interface that can be implemented by any type that
+	// Command is an interface that can be implemented by any type that
 	// wants to be run by the asdpplication.
-	Runnable interface {
-		RunCommand(context.Context, io.Writer) error
+	Command[T Application] interface {
+		RunCommand(context.Context, T) error
 		CommandName() string
 		CommandDescription() string
 	}
 )
 
 // NewApplication creates a new application instance.
-func NewApplication[T NamedApplication](a T) *Application[T] {
-	app := &Application[T]{
+func NewApplication[T Application](a T) *Runner[T] {
+	app := &Runner[T]{
 		app:                  a,
-		runnables:            make(map[string]Runnable, 0),
+		runnables:            make(map[string]Command[T], 0),
 		runnableOrder:        make([]string, 0),
 		runnableDescriptions: make(map[string]string, 0),
-		Out:                  os.Stdout,
 	}
 
 	if !app.skipGenerator {
-		generator := &generator.Generator{}
+		generator := &generator.Generator[T]{}
 		app.RegisterCommand(generator)
 	}
 
@@ -76,7 +63,7 @@ func NewApplication[T NamedApplication](a T) *Application[T] {
 
 // Execute runs the registered runnable that matches the command line arguments.
 // If no runnable matches, the help text is printed.
-func (a *Application[T]) Execute(ctx context.Context) {
+func (a *Runner[T]) Execute(ctx context.Context) {
 	args := os.Args[1:]
 
 	a.ExecuteWithArgs(ctx, args)
@@ -84,7 +71,7 @@ func (a *Application[T]) Execute(ctx context.Context) {
 
 // ExecuteWithArgs runs the registered runnable that matches the command line
 // arguments. If no runnable matches, the help text is printed.
-func (a *Application[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
+func (r *Runner[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
@@ -93,34 +80,33 @@ func (a *Application[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) 
 
 	go func() {
 		<-c
-		fmt.Println("CANCEL")
 		done()
 	}()
 
 	if len(cmdArgs) < 1 {
-		a.Help()
+		r.Help()
 		return
 	}
 
 	cmdName := cmdArgs[0]
 	if cmdName == "help" {
 		if len(cmdArgs) == 1 {
-			a.Help()
+			r.Help()
 		} else {
-			a.HelpCommand(cmdArgs[1])
+			r.HelpCommand(cmdArgs[1])
 		}
 
 		return
 	}
 
-	cmd, ok := a.runnables[cmdName]
+	cmd, ok := r.runnables[cmdName]
 	if !ok {
-		fmt.Fprintf(a.Out, "unknown command: %s\n", cmdName)
+		r.app.Log(fmt.Sprintf("unknown command: %s\n", cmdName))
 		return
 	}
 
 	if len(cmdArgs) == 1 {
-		cmd.RunCommand(ctx, a.Out)
+		cmd.RunCommand(ctx, r.app)
 		return
 	}
 
@@ -152,7 +138,7 @@ func (a *Application[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) 
 		}
 		_, hasFlag := parsedArgs[flagName]
 		if !hasFlag && argType.Tag.Get("required") == "true" {
-			fmt.Fprintf(a.Out, "missing required flag: %s", flagName)
+			r.app.Log(fmt.Sprintf("missing required flag: %s", flagName))
 			return
 		} else if !hasFlag {
 			continue
@@ -160,8 +146,8 @@ func (a *Application[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) 
 
 		parsedArg, ok := parsedArgs[flagName]
 		if !ok {
-			fmt.Fprintf(a.Out, "could not parse flag %s\n", flagName)
-			a.HelpCommand(cmdName)
+			r.app.Log(fmt.Sprintf("could not parse flag %s\n", flagName))
+			r.HelpCommand(cmdName)
 			return
 		}
 
@@ -194,7 +180,7 @@ func (a *Application[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) 
 		}
 	}
 
-	err = cmd.RunCommand(ctx, a.Out)
+	err = cmd.RunCommand(ctx, r.app)
 	if err != nil {
 		panic(err)
 	}
@@ -203,12 +189,12 @@ func (a *Application[T]) ExecuteWithArgs(ctx context.Context, cmdArgs []string) 
 var cmdNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z:]+$`)
 
 // RegisterCommand adds a runnable to the application that can be run via the CLI.
-func (a *Application[T]) RegisterCommand(runnable Runnable) {
+func (a *Runner[T]) RegisterCommand(runnable Command[T]) {
 	name := runnable.CommandName()
 	a.RegisterCommandWithName(runnable, name)
 }
 
-func (a *Application[T]) RegisterCommandWithName(runnable Runnable, name string) {
+func (a *Runner[T]) RegisterCommandWithName(runnable Command[T], name string) {
 	if name == "help" {
 		panic("cannot register command named help")
 	}
@@ -226,13 +212,13 @@ func (a *Application[T]) RegisterCommandWithName(runnable Runnable, name string)
 	a.runnableDescriptions[name] = runnable.CommandDescription()
 }
 
-func (a *Application[T]) Help() {
-	_, _ = a.Out.Write([]byte("usage\n"))
+func (r *Runner[T]) Help() {
+	r.app.Log("usage\n")
 
 	longestRunnable := 2
 
-	names := make([]string, 0, len(a.runnables))
-	for _, name := range a.runnableOrder {
+	names := make([]string, 0, len(r.runnables))
+	for _, name := range r.runnableOrder {
 		names = append(names, name)
 	}
 	sort.Strings(names)
@@ -244,19 +230,19 @@ func (a *Application[T]) Help() {
 	}
 
 	for _, name := range names {
-		fmt.Fprintf(a.Out, "  %s %s %s\n", name, strings.Repeat(" ", longestRunnable-len(name)), a.runnableDescriptions[name])
+		r.app.Log(fmt.Sprintf("  %s %s %s\n", name, strings.Repeat(" ", longestRunnable-len(name)), r.runnableDescriptions[name]))
 	}
 }
 
-func (a *Application[T]) HelpCommand(cmdName string) {
-	cmd, ok := a.runnables[cmdName]
+func (r *Runner[T]) HelpCommand(cmdName string) {
+	cmd, ok := r.runnables[cmdName]
 	if !ok {
-		fmt.Fprintf(a.Out, "unknown command: %s\n", cmdName)
-		a.Help()
+		r.app.Log(fmt.Sprintf("unknown command: %s\n", cmdName))
+		r.Help()
 		return
 	}
 
-	_, _ = a.Out.Write([]byte(fmt.Sprintf("usage for %s\n", cmdName)))
+	r.app.Log(fmt.Sprintf("usage for %s\n", cmdName))
 	longestArg := 2
 
 	t := reflect.TypeOf(cmd)
@@ -281,7 +267,6 @@ func (a *Application[T]) HelpCommand(cmdName string) {
 		argType := t.Field(i)
 		flagName := argType.Tag.Get("flag")
 		description := argType.Tag.Get("description")
-		// required := argType.Tag.Get("required")
 
 		if flagName == "" {
 			continue
@@ -294,7 +279,7 @@ func (a *Application[T]) HelpCommand(cmdName string) {
 		if required := argType.Tag.Get("required"); required == "true" {
 			description = fmt.Sprintf("%s (required)", description)
 		}
-		fmt.Fprintf(a.Out, "  -%s %s %s\n", flagName, strings.Repeat(" ", longestArg-len(flagName)), description)
+		r.app.Log(fmt.Sprintf("  -%s %s %s\n", flagName, strings.Repeat(" ", longestArg-len(flagName)), description))
 	}
 
 }
