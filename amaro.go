@@ -14,8 +14,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/blakewilliams/amaro/generator"
 )
 
 type Application interface {
@@ -31,8 +29,6 @@ type (
 		runnables            map[string]Command[T]
 		runnableOrder        []string
 		runnableDescriptions map[string]string
-
-		skipGenerator bool
 	}
 
 	// Command is an interface that can be implemented by any type that
@@ -51,11 +47,6 @@ func NewApplication[T Application](a T) *Runner[T] {
 		runnables:            make(map[string]Command[T], 0),
 		runnableOrder:        make([]string, 0),
 		runnableDescriptions: make(map[string]string, 0),
-	}
-
-	if !app.skipGenerator {
-		generator := &generator.Generator[T]{}
-		app.RegisterCommand(generator)
 	}
 
 	return app

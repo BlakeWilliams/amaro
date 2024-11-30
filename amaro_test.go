@@ -161,7 +161,7 @@ func TestHelp(t *testing.T) {
 	runner.RegisterCommand(&AgeGreeter[*testApp]{})
 	runner.ExecuteWithArgs(context.Background(), []string{"help"})
 
-	expected := "usage\n  generate:core  Generates the base files for a new amaro project\n  greet          greets users\n  greet:age      greets users with their age\n"
+	expected := "usage\n  greet      greets users\n  greet:age  greets users with their age\n"
 	got := runner.app.out.(*bytes.Buffer).String()
 
 	require.Contains(t, got, expected)
