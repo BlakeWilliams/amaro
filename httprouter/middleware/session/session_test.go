@@ -39,7 +39,7 @@ func TestMiddleware(t *testing.T) {
 	// TODO: remove init function and rely on SessionData() to initialize
 	// session.
 	store := New[*MyData]("session", verifier, nil, func() *MyData { return &MyData{} })
-	cookie, err := store.cookie(&MyData{UserID: 500, Name: "Fox Mulder"})
+	cookie, err := store.ToCookie(&MyData{UserID: 500, Name: "Fox Mulder"})
 	require.NoError(t, err)
 
 	router.Use(Middleware[*requestContext, *MyData](store))
@@ -112,7 +112,7 @@ func TestCookieOptions(t *testing.T) {
 	}
 	store := New[*MyData]("session", verifier, options, func() *MyData { return &MyData{} })
 
-	cookie, err := store.cookie(&MyData{UserID: 500, Name: "Fox Mulder"})
+	cookie, err := store.ToCookie(&MyData{UserID: 500, Name: "Fox Mulder"})
 	require.NoError(t, err)
 
 	require.Equal(t, "example.com", cookie.Domain)
