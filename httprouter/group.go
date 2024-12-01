@@ -14,8 +14,8 @@ type (
 	}
 )
 
-var _ Routable[*RootRequestContext] = (*Group[*RootRequestContext])(nil)
-var _ Registerable[*RootRequestContext] = (*Group[*RootRequestContext])(nil)
+var _ Routable[*rootRequestContext] = (*Group[*rootRequestContext])(nil)
+var _ Registerable[*rootRequestContext] = (*Group[*rootRequestContext])(nil)
 
 // NewGroup returns a new Group instance.
 func NewGroup[T RequestContext](parent Registerable[T], prefix string) *Group[T] {

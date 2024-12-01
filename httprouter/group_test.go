@@ -13,14 +13,14 @@ func TestGroup(t *testing.T) {
 	router := New(WithBasicRequestContext)
 	group := router.Group("/api/")
 
-	handler := func(ctx context.Context, r *RootRequestContext) {
+	handler := func(ctx context.Context, r *rootRequestContext) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
-		routerFn func(string, Handler[*RootRequestContext])
+		routerFn func(string, Handler[*rootRequestContext])
 		method   string
 	}{
 		"GET":    {method: http.MethodGet, routerFn: group.Get},
@@ -48,12 +48,12 @@ func TestGroup(t *testing.T) {
 
 func TestGroup_Middleware(t *testing.T) {
 	router := New(WithBasicRequestContext)
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *rootRequestContext, next Handler[*rootRequestContext]) {
 		ctx = context.WithValue(ctx, beforeContextKey{}, "baz")
 
 		next(ctx, r)
 	})
-	router.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	router.Use(func(ctx context.Context, r *rootRequestContext, next Handler[*rootRequestContext]) {
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
 		r.Response().Header().Set("x-before", "baz")
 
@@ -62,14 +62,14 @@ func TestGroup_Middleware(t *testing.T) {
 
 	group := router.Group("/api")
 
-	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	group.Use(func(ctx context.Context, r *rootRequestContext, next Handler[*rootRequestContext]) {
 		require.Equal(t, "baz", ctx.Value(beforeContextKey{}))
 		r.Response().Header().Set("x-group", "yolo")
 
 		next(ctx, r)
 	})
 
-	group.Get("/foo", func(ctx context.Context, r *RootRequestContext) {
+	group.Get("/foo", func(ctx context.Context, r *rootRequestContext) {
 		_, _ = r.Response().Write([]byte("Hello world"))
 	})
 
@@ -86,18 +86,18 @@ func TestGroup_NestedGroup(t *testing.T) {
 	group := router.Group("/api")
 	subgroup := group.Group("/v1")
 
-	group.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	group.Use(func(ctx context.Context, r *rootRequestContext, next Handler[*rootRequestContext]) {
 		ctx = context.WithValue(ctx, contextKey{}, "foo")
 		next(ctx, r)
 	})
 
-	subgroup.Use(func(ctx context.Context, r *RootRequestContext, next Handler[*RootRequestContext]) {
+	subgroup.Use(func(ctx context.Context, r *rootRequestContext, next Handler[*rootRequestContext]) {
 		require.Equal(t, "foo", ctx.Value(contextKey{}))
 		r.Response().Header().Set("x-subgroup", "v1")
 		next(ctx, r)
 	})
 
-	subgroup.Get("/foo", func(ctx context.Context, r *RootRequestContext) {
+	subgroup.Get("/foo", func(ctx context.Context, r *rootRequestContext) {
 		_, _ = r.Response().Write([]byte("Hello world"))
 	})
 
@@ -112,7 +112,7 @@ func TestGroup_PrefixRoot(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	group := router.Group("/foo")
-	group.Get("/", func(ctx context.Context, r *RootRequestContext) {
+	group.Get("/", func(ctx context.Context, r *rootRequestContext) {
 		r.Response().WriteHeader(http.StatusOK)
 	})
 

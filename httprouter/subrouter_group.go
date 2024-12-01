@@ -14,7 +14,7 @@ type controllerGroup[T RequestContext, RequestData FromRequest[T]] struct {
 	middlewares []func(context.Context, T, Handler[T])
 }
 
-var _ ControllerRoutable[*RootRequestContext, *placeholderFromRequest] = &Controller[*RootRequestContext, *placeholderFromRequest]{}
+var _ ControllerRoutable[*rootRequestContext, *placeholderFromRequest] = &Controller[*rootRequestContext, *placeholderFromRequest]{}
 
 // RawMatch implements the Registerable interface and forwards the call to the
 // parent router. This allows other controllers and controller groups to be

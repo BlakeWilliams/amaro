@@ -62,8 +62,8 @@ type (
 	}
 )
 
-var _ Routable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
-var _ Registerable[*RootRequestContext] = (*Router[*RootRequestContext])(nil)
+var _ Routable[*rootRequestContext] = (*Router[*rootRequestContext])(nil)
+var _ Registerable[*rootRequestContext] = (*Router[*rootRequestContext])(nil)
 
 // New returns a new router with the given RequestContext type. The function
 // passed to this function is used to initialize the RequestContext for each

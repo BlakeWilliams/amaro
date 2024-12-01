@@ -15,7 +15,7 @@ type PostData struct {
 	ID int
 }
 
-func (p *PostData) FromRequest(ctx context.Context, r *RootRequestContext) bool {
+func (p *PostData) FromRequest(ctx context.Context, r *rootRequestContext) bool {
 	p.ID = 1
 	return true
 }
@@ -24,7 +24,7 @@ type CommentData struct {
 	ID int
 }
 
-func (c *CommentData) FromRequest(ctx context.Context, r *RootRequestContext) bool {
+func (c *CommentData) FromRequest(ctx context.Context, r *rootRequestContext) bool {
 	stringID := r.Params()["id"]
 	id, err := strconv.Atoi(stringID)
 	if err != nil {
@@ -40,14 +40,14 @@ func TestController(t *testing.T) {
 	router := New(WithBasicRequestContext)
 	controller := NewController(router, &PostData{})
 
-	handler := func(ctx context.Context, r *RootRequestContext, postData *PostData) {
+	handler := func(ctx context.Context, r *rootRequestContext, postData *PostData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(`{"foo": "bar"}`))
 	}
 
 	tests := map[string]struct {
-		routerFn func(string, ControllerHandler[*RootRequestContext, *PostData])
+		routerFn func(string, ControllerHandler[*rootRequestContext, *PostData])
 		method   string
 	}{
 		"GET":    {method: http.MethodGet, routerFn: controller.Get},
@@ -77,7 +77,7 @@ func TestController_Routing(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	controller := NewController(router, &PostData{})
-	controller.Match("GET", "/", func(ctx context.Context, r *RootRequestContext, p *PostData) {
+	controller.Match("GET", "/", func(ctx context.Context, r *rootRequestContext, p *PostData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(fmt.Sprintf(`{"id": "%d"}`, p.ID)))
@@ -103,7 +103,7 @@ func Test_NestedController(t *testing.T) {
 	postController := NewController(router, &PostData{})
 	commentController := NewController(postController, &CommentData{})
 
-	commentController.Match("GET", "/comments/:id", func(ctx context.Context, r *RootRequestContext, c *CommentData) {
+	commentController.Match("GET", "/comments/:id", func(ctx context.Context, r *rootRequestContext, c *CommentData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(fmt.Sprintf(`{"id": "%d"}`, c.ID)))
@@ -127,7 +127,7 @@ func Test_FromRequestFalse(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	commentController := NewController(router, &CommentData{})
-	commentController.Match("GET", "/comments/:id", func(ctx context.Context, r *RootRequestContext, p *CommentData) {
+	commentController.Match("GET", "/comments/:id", func(ctx context.Context, r *rootRequestContext, p *CommentData) {
 		r.Response().Header().Set("Content-Type", "application/json")
 		r.Response().WriteHeader(http.StatusCreated)
 		_, _ = r.Response().Write([]byte(fmt.Sprintf(`{"id": "%d"}`, p.ID)))
@@ -150,9 +150,9 @@ func Test_ControllerGroupPrefix(t *testing.T) {
 
 	controller := NewController(router, &PostData{})
 	group := controller.Group("/comments")
-	group.RawMatch(http.MethodGet, "/testing", func(ctx context.Context, r *RootRequestContext) {})
+	group.RawMatch(http.MethodGet, "/testing", func(ctx context.Context, r *rootRequestContext) {})
 	subgroup := group.Group("/sub")
-	subgroup.Get("/get", func(ctx context.Context, r *RootRequestContext, p *PostData) {})
+	subgroup.Get("/get", func(ctx context.Context, r *rootRequestContext, p *PostData) {})
 
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/comments/testing", nil)
@@ -230,7 +230,7 @@ func TestControllerGroup_PrefixRoot(t *testing.T) {
 	router := New(WithBasicRequestContext)
 
 	controller := NewController(router, &PostData{}).Group("/foo")
-	controller.Get("/", func(ctx context.Context, r *RootRequestContext, p *PostData) {
+	controller.Get("/", func(ctx context.Context, r *rootRequestContext, p *PostData) {
 		r.Response().WriteHeader(http.StatusOK)
 	})
 

@@ -42,9 +42,9 @@ type (
 )
 
 // Implement the FromRequest interface for the placeholder type so we can assert interface adherence.
-func (p *placeholderFromRequest) FromRequest(context.Context, *RootRequestContext) bool { return false }
+func (p *placeholderFromRequest) FromRequest(context.Context, *rootRequestContext) bool { return false }
 
-var _ ControllerRoutable[*RootRequestContext, *placeholderFromRequest] = &Controller[*RootRequestContext, *placeholderFromRequest]{}
+var _ ControllerRoutable[*rootRequestContext, *placeholderFromRequest] = &Controller[*rootRequestContext, *placeholderFromRequest]{}
 
 // NewController creates a new controller that can be used to register handlers
 // that accept a type that implements the FromRequest interface. Each request

@@ -21,36 +21,36 @@ type RequestContext interface {
 
 // BasicRequestContext is a basic implementation of RequestContext. It can be embedded in
 // other types to provide a default implementation of the RequestContext interface.
-type RootRequestContext struct {
+type rootRequestContext struct {
 	req         *http.Request
 	res         Response
 	params      map[string]string
 	matchedPath string
 }
 
-var _ RequestContext = (*RootRequestContext)(nil)
+var _ RequestContext = (*rootRequestContext)(nil)
 
-func NewRequestContext(req *http.Request, res http.ResponseWriter, matchedPath string, params map[string]string) *RootRequestContext {
-	return &RootRequestContext{
+func NewRequestContext(req *http.Request, res http.ResponseWriter, matchedPath string, routeParams map[string]string) *rootRequestContext {
+	return &rootRequestContext{
 		req:         req,
 		res:         newResponseWriter(res),
 		matchedPath: matchedPath,
-		params:      params,
+		params:      routeParams,
 	}
 }
 
-func (r *RootRequestContext) Request() *http.Request {
+func (r *rootRequestContext) Request() *http.Request {
 	return r.req
 }
 
-func (r *RootRequestContext) Response() Response {
+func (r *rootRequestContext) Response() Response {
 	return r.res
 }
 
-func (r *RootRequestContext) Params() map[string]string {
+func (r *rootRequestContext) Params() map[string]string {
 	return r.params
 }
 
-func (r *RootRequestContext) MatchedPath() string {
+func (r *rootRequestContext) MatchedPath() string {
 	return r.matchedPath
 }
