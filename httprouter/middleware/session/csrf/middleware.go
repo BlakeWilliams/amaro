@@ -3,6 +3,7 @@ package csrf
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -58,28 +59,29 @@ func Middleware[T CSRFable](config MiddlewareConfig[T]) httprouter.Middleware[T]
 
 		switch rctx.Request().Method {
 		case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
-			var requestToken string
-			err := rctx.Request().ParseForm()
+			var token string
 
-			if err != nil {
-				logger.Error("invalid authenticity token", "error", err.Error(), "valid", "false")
-				panic("invalid authenticity token")
+			// Check header first to avoid calling ParseForm if it's unnecessary
+			if headerToken := rctx.Request().Header.Get("x-csrf-token"); headerToken != "" {
+				token = headerToken
+			} else {
+				err := rctx.Request().ParseForm()
+				if err != nil {
+					logger.Error("unable to parse form in csrf middleware", "error", err.Error(), "valid", "false")
+					panic("invalid authenticity token")
+				}
+
+				if formTokens := rctx.Request().PostForm["authenticity_token"]; len(formTokens) > 0 {
+					token = formTokens[0]
+				}
 			}
 
-			if tokens := rctx.Request().PostForm["authenticity_token"]; len(tokens) > 0 {
-				requestToken = tokens[0]
-			}
-
-			if token := rctx.Request().Header.Get("x-csrf-token"); token != "" {
-				requestToken = token
-			}
-
-			if requestToken == "" {
-				panic("No token provided!")
-			}
-
-			if valid, err := rctx.CSRF().VerifyAuthenticityToken(requestToken); !valid || err != nil {
-				// logger.Error("invalid authenticity token", "error", err.Error(), "valid", fmt.Sprint(valid))
+			if valid, err := rctx.CSRF().VerifyAuthenticityToken(token); !valid || err != nil {
+				logKeys := []any{"valid", fmt.Sprint(valid)}
+				if err != nil {
+					logKeys = append(logKeys, "error", err.Error())
+				}
+				logger.Error("invalid authenticity token", logKeys...)
 				if config.HandleInvalidToken != nil {
 					config.HandleInvalidToken(ctx, rctx)
 					return
