@@ -2,7 +2,7 @@
 // messages. Flash messages are messages stored in the session that are deleted
 // after being accessed once.
 //
-// To use, simply add `*flash.Messages` to your session data.
+// To use, simply add `*flash.Messages` to your session data, and use the Middleware in your app.
 //
 //	type SessionData struct {
 //	    Flash *flash.Messages

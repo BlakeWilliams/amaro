@@ -52,23 +52,55 @@ func TestFlash(t *testing.T) {
 		rctx.Flash().Set("foo", "hello!")
 	})
 
+	router.Get("/overwrite", func(ctx context.Context, rctx *requestContext) {
+		rctx.Flash().Set("foo", "hello there!")
+
+		rctx.Response().Write(
+			[]byte(rctx.Flash().Get("foo")),
+		)
+	})
+
 	router.Get("/flash", func(ctx context.Context, rctx *requestContext) {
 		rctx.Response().Write(
 			[]byte(rctx.Flash().Get("foo")),
 		)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
+	t.Run("basic flash usage", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		res := httptest.NewRecorder()
+		router.ServeHTTP(res, req)
+		cookies := res.Header().Get("Set-Cookie")
+		require.NotEmpty(t, cookies)
 
-	cookies := res.Header().Get("Set-Cookie")
-	require.NotEmpty(t, cookies)
+		req = httptest.NewRequest(http.MethodGet, "/flash", nil)
+		req.Header.Set("Cookie", cookies)
+		res = httptest.NewRecorder()
+		router.ServeHTTP(res, req)
 
-	req = httptest.NewRequest(http.MethodGet, "/flash", nil)
-	req.Header.Set("Cookie", cookies)
-	res = httptest.NewRecorder()
-	router.ServeHTTP(res, req)
+		require.Equal(t, "hello!", res.Body.String())
+	})
 
-	require.Equal(t, "hello!", res.Body.String())
+	t.Run("overwriting existing flash", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		res := httptest.NewRecorder()
+		router.ServeHTTP(res, req)
+		cookies := res.Header().Get("Set-Cookie")
+		require.NotEmpty(t, cookies)
+
+		req = httptest.NewRequest(http.MethodGet, "/overwrite", nil)
+		req.Header.Set("Cookie", cookies)
+		res = httptest.NewRecorder()
+		router.ServeHTTP(res, req)
+		cookies = res.Header().Get("Set-Cookie")
+
+		require.Equal(t, "hello!", res.Body.String())
+
+		req = httptest.NewRequest(http.MethodGet, "/flash", nil)
+		req.Header.Set("Cookie", cookies)
+		res = httptest.NewRecorder()
+		router.ServeHTTP(res, req)
+
+		require.Equal(t, "hello there!", res.Body.String())
+	})
 }

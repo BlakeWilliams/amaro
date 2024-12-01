@@ -13,15 +13,19 @@ type (
 	// Messages contains the flash messages for a session, encoding/decoding as
 	// needed into the session store.
 	Messages struct {
-		entries map[string]message
-		mu      sync.RWMutex
+		// snapshot captures a copy of the initial entries so that
+		// the current request can't overwrite an existing flash message
+		snapshot map[string]message
+		// next is the set of flashes that will be available to the next
+		// request. They are not readable in this request.
+		next map[string]message
+
+		toRemove map[string]struct{}
+		mu       sync.RWMutex
 	}
 
 	message struct {
-		Value   string
-		SetNow  bool `json:"-"`
-		WasSet  bool `json:"-"`
-		WasRead bool `json:"-"`
+		Value string
 	}
 
 	// FlashableRequestContext is a request context that reutrns a session with
@@ -32,68 +36,64 @@ type (
 	}
 )
 
+// Set sets the given flash message.
 func (m *Messages) Set(name string, value string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.entries == nil {
-		m.entries = make(map[string]message)
+	if m.next == nil {
+		m.next = make(map[string]message)
 	}
 
-	m.entries[name] = message{Value: value, SetNow: false, WasSet: true}
+	m.next[name] = message{Value: value}
 }
 
+// SetNow sets the given flash message, and ensures that it's available _only_
+// for this request. This can override existing flash messages.
 func (m *Messages) SetNow(name string, value string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.entries == nil {
-		m.entries = make(map[string]message)
+	if m.snapshot == nil {
+		m.snapshot = make(map[string]message)
 	}
 
-	m.entries[name] = message{Value: value, SetNow: true, WasSet: true}
+	m.snapshot[name] = message{Value: value}
+
+	if m.toRemove == nil {
+		m.toRemove = make(map[string]struct{})
+	}
+	m.toRemove[name] = struct{}{}
 }
 
+// Get returns the flash message for the given flash. If the flash message was
+// set using `SetNow` it will be available during this request. If it was set
+// using `Set` it will be available until its value is read or it is overwritten.
 func (m *Messages) Get(name string) string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	if m.entries == nil {
+	if m.snapshot == nil {
 		return ""
 	}
 
-	flash, ok := m.entries[name]
+	flash, ok := m.snapshot[name]
 	if !ok {
 		return ""
 	}
 
-	// If it was set now, we should return it
-	if flash.SetNow {
-		flash.WasRead = true
-		return flash.Value
+	if m.toRemove == nil {
+		m.toRemove = make(map[string]struct{})
 	}
+	m.toRemove[name] = struct{}{}
 
-	// If it _was_ set, and it's not SetNow, we return nothing
-	if flash.WasSet {
-		return ""
-	}
-
-	// If it wasn't set this session, we return it
-	flash.WasRead = true
 	return flash.Value
-}
-
-func (m *Messages) Delete(name string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	delete(m.entries, name)
 }
 
 func (m *Messages) MarshalJSON() ([]byte, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	output, err := json.Marshal(m.entries)
+	output, err := json.Marshal(m.next)
 	if err != nil {
 		return nil, fmt.Errorf("Could not marshal flashes: %w", err)
 	}
@@ -105,7 +105,7 @@ func (m *Messages) UnmarshalJSON(data []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	err := json.Unmarshal(data, &m.entries)
+	err := json.Unmarshal(data, &m.snapshot)
 	if err != nil {
 		return fmt.Errorf("Could not unmarshal flashes: %w", err)
 	}
@@ -113,14 +113,17 @@ func (m *Messages) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Middleware enables flash being clearing after use
+// Middleware is necessary to ensure that the flash messages are cleaned up
+// after being used.
 func Middleware[T FlashableRequestContext](ctx context.Context, rc T, next httprouter.Handler[T]) {
 	next(ctx, rc)
 
 	flash := rc.Flash()
-	for k, message := range flash.entries {
-		if message.WasRead || message.SetNow {
-			flash.Delete(k)
+	for k, message := range flash.snapshot {
+		if _, ok := flash.toRemove[k]; ok {
+			continue
 		}
+
+		flash.Set(k, message.Value)
 	}
 }
