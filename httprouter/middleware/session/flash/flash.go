@@ -113,17 +113,26 @@ func (m *Messages) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Rollover takes the unread flash messages and sets them to be reused in the
+// next request if they haven't been overwritten.
+func (m *Messages) Rollover() {
+	for k, message := range m.snapshot {
+		if _, ok := m.toRemove[k]; ok {
+			continue
+		}
+
+		if _, ok := m.next[k]; ok {
+			continue
+		}
+
+		m.Set(k, message.Value)
+	}
+}
+
 // Middleware is necessary to ensure that the flash messages are cleaned up
 // after being used.
 func Middleware[T FlashableRequestContext](ctx context.Context, rc T, next httprouter.Handler[T]) {
 	next(ctx, rc)
 
-	flash := rc.Flash()
-	for k, message := range flash.snapshot {
-		if _, ok := flash.toRemove[k]; ok {
-			continue
-		}
-
-		flash.Set(k, message.Value)
-	}
+	rc.Flash().Rollover()
 }
