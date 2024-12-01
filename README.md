@@ -63,3 +63,9 @@ with `go run <your cmd path> greet`!
 ## Web
 
 TODO document how to bootstrap a web app
+
+### Sessions
+
+### Flash messages (notices)
+
+### CSRF
